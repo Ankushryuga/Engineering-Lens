@@ -1,0 +1,1080 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Algo-Visualizer — Real-World Scenario Mode</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root, [data-theme='dark'] {
+    --bg: #0A0A0B;
+    --surface: #121214;
+    --surface-2: #18181B;
+    --surface-3: #1F1F23;
+    --border: #26262A;
+    --border-strong: #3A3A40;
+    --text: #E4E4E7;
+    --text-secondary: #8C8C94;
+    --text-muted: #57575E;
+    --accent: #5C7CFA;
+    --accent-dim: #171B2E;
+    --accent-soft: #8FA6FA;
+    --compare: #A6A9B4;
+    --compare-dim: #1D1E22;
+    --swap: #D97757;
+    --swap-dim: #2A1C15;
+    --swap-soft: #E39A7F;
+    --done: #5FA88A;
+    --done-dim: #132420;
+    --sans: 'IBM Plex Sans', sans-serif;
+    --mono: 'IBM Plex Mono', monospace;
+  }
+
+  * , *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 14px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  button { font-family: var(--sans); cursor: pointer; }
+
+  .app { display: flex; flex-direction: column; height: 100vh; }
+
+  /* ---------- Header ---------- */
+  header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 20px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    flex-shrink: 0;
+  }
+  .brand { display: flex; align-items: center; gap: 10px; }
+  .brand .mark {
+    width: 26px; height: 26px; border-radius: 6px;
+    background: var(--accent); display: flex; align-items: center; justify-content: center;
+    font-family: var(--mono); font-weight: 600; font-size: 13px; color: #fff;
+  }
+  .brand .name { font-weight: 600; font-size: 14px; }
+  .brand .name span { color: var(--text-muted); font-weight: 400; }
+
+  .mode-toggle {
+    display: flex; align-items: center; gap: 10px;
+    background: var(--surface-2); border: 1px solid var(--border);
+    border-radius: 8px; padding: 3px;
+  }
+  .mode-toggle button {
+    border: none; background: transparent; color: var(--text-secondary);
+    font-size: 12.5px; font-weight: 500; padding: 7px 14px; border-radius: 6px;
+    transition: all .15s ease; display: flex; align-items: center; gap: 6px;
+  }
+  .mode-toggle button.active { background: var(--accent); color: #fff; }
+  .mode-toggle button:not(.active):hover { color: var(--text); }
+
+  /* ---------- Layout ---------- */
+  .layout { display: flex; flex: 1; min-height: 0; }
+
+  /* ---------- Sidebar ---------- */
+  .sidebar {
+    width: 260px; flex-shrink: 0; background: var(--surface);
+    border-right: 1px solid var(--border); overflow-y: auto;
+    padding: 14px 10px;
+  }
+  .cat { margin-bottom: 4px; }
+  .cat-head {
+    display: flex; align-items: center; gap: 8px; width: 100%;
+    background: transparent; border: none; color: var(--text-secondary);
+    padding: 8px 10px; font-size: 11.5px; font-weight: 600; letter-spacing: .04em;
+    text-transform: uppercase; border-radius: 6px;
+  }
+  .cat-head:hover { background: var(--surface-2); color: var(--text); }
+  .cat-head .chev { margin-left: auto; font-size: 10px; transition: transform .15s ease; color: var(--text-muted); }
+  .cat.open .cat-head .chev { transform: rotate(90deg); }
+  .cat-items { display: none; padding: 2px 0 8px 4px; }
+  .cat.open .cat-items { display: block; }
+
+  .item {
+    display: flex; align-items: center; gap: 9px; width: 100%;
+    background: transparent; border: none; color: var(--text-secondary);
+    padding: 7px 10px; border-radius: 6px; font-size: 13px; text-align: left;
+  }
+  .item:hover { background: var(--surface-2); color: var(--text); }
+  .item.active { background: var(--accent-dim); color: var(--accent-soft); font-weight: 500; }
+  .item .icn { font-size: 14px; width: 18px; text-align: center; flex-shrink: 0; }
+  .item .stub-tag {
+    margin-left: auto; font-size: 9.5px; color: var(--text-muted);
+    border: 1px solid var(--border-strong); padding: 1px 5px; border-radius: 4px;
+  }
+
+  /* ---------- Main stage ---------- */
+  .stage { flex: 1; overflow-y: auto; padding: 24px 32px 40px; min-width: 0; }
+  .stage-inner { max-width: 920px; margin: 0 auto; }
+
+  .scenario-head { margin-bottom: 18px; }
+  .crumb { font-size: 12px; color: var(--text-muted); margin-bottom: 10px; font-family: var(--mono); }
+  .title-row { display: flex; align-items: flex-start; gap: 14px; }
+  .title-row .big-icn {
+    font-size: 30px; width: 52px; height: 52px; flex-shrink: 0;
+    background: var(--surface-2); border: 1px solid var(--border); border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .title-row h1 { font-size: 21px; font-weight: 600; margin-bottom: 4px; }
+  .title-row .sub { font-size: 13px; color: var(--text-secondary); }
+  .badges { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+  .badge {
+    font-family: var(--mono); font-size: 11px; padding: 3px 9px; border-radius: 5px;
+    background: var(--surface-2); border: 1px solid var(--border); color: var(--text-secondary);
+  }
+  .blurb {
+    margin-top: 14px; padding: 13px 15px; background: var(--surface-2);
+    border: 1px solid var(--border); border-left: 3px solid var(--accent);
+    border-radius: 8px; font-size: 13px; color: var(--text-secondary); line-height: 1.6;
+  }
+  .blurb strong { color: var(--text); }
+
+  /* ---------- Canvas ---------- */
+  .canvas-card {
+    margin-top: 18px; background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; overflow: hidden;
+  }
+  .canvas-toolbar {
+    display: flex; align-items: center; gap: 8px; padding: 10px 14px;
+    border-bottom: 1px solid var(--border); background: var(--surface-2);
+  }
+  .ctl-btn {
+    background: var(--surface-3); border: 1px solid var(--border-strong); color: var(--text);
+    width: 30px; height: 30px; border-radius: 7px; font-size: 13px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .ctl-btn:hover { border-color: var(--accent); color: var(--accent-soft); }
+  .ctl-btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; width: auto; padding: 0 14px; gap: 6px; }
+  .ctl-btn.primary:hover { background: var(--accent-soft); color: #0A0A0B; }
+  .speed-label { font-size: 11px; color: var(--text-muted); margin-left: auto; font-family: var(--mono); }
+  input[type="range"] { width: 90px; accent-color: var(--accent); }
+
+  .canvas-body {
+    min-height: 260px; padding: 26px 20px; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 14px;
+    background:
+      radial-gradient(circle at 1px 1px, var(--border) 1px, transparent 0) 0 0/22px 22px;
+  }
+  .status-line {
+    font-family: var(--mono); font-size: 12px; color: var(--text-secondary);
+    background: var(--surface-2); border: 1px solid var(--border); padding: 6px 12px;
+    border-radius: 6px; min-height: 30px; display: flex; align-items: center; gap: 8px;
+  }
+  .status-line .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); flex-shrink: 0;}
+
+  /* ---------- Sort viz ---------- */
+  .sort-row { display: flex; align-items: flex-end; gap: 8px; height: 170px; }
+  .box {
+    width: 46px; border-radius: 5px 5px 3px 3px; display: flex; flex-direction: column;
+    align-items: center; justify-content: flex-end; padding-bottom: 5px;
+    background: var(--surface-3); border: 1.5px solid var(--border-strong);
+    transition: all .35s cubic-bezier(.4,0,.2,1); position: relative;
+  }
+  .box .lbl { font-family: var(--mono); font-size: 11px; font-weight: 600; color: var(--text-secondary); }
+  .box .tag { position: absolute; top: -20px; font-size: 15px; }
+  .box.compare { background: var(--compare-dim); border-color: var(--compare); }
+  .box.compare .lbl { color: var(--compare); }
+  .box.swap { background: var(--swap-dim); border-color: var(--swap); transform: translateY(-6px); }
+  .box.swap .lbl { color: var(--swap-soft); }
+  .box.done { background: var(--done-dim); border-color: var(--done); }
+  .box.done .lbl { color: var(--done); }
+
+  /* ---------- Search viz ---------- */
+  .search-row { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; max-width: 640px; }
+  .page {
+    width: 64px; height: 64px; border-radius: 8px; background: var(--surface-3);
+    border: 1.5px solid var(--border-strong); display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 2px; position: relative;
+    transition: all .3s ease; opacity: .35;
+  }
+  .page.active-range { opacity: 1; }
+  .page .word { font-size: 12px; font-weight: 600; }
+  .page .idx { font-family: var(--mono); font-size: 9px; color: var(--text-muted); }
+  .page.mid { border-color: var(--accent); background: var(--accent-dim); box-shadow: 0 0 0 3px var(--accent-dim); }
+  .page.mid .word { color: var(--accent-soft); }
+  .page.found { border-color: var(--done); background: var(--done-dim); }
+  .page.found .word { color: var(--done); }
+  .page .tag { position: absolute; top: -22px; font-size: 16px; }
+
+  /* ---------- Graph viz ---------- */
+  svg.graph-svg { max-width: 100%; }
+  .g-edge { stroke: var(--border-strong); stroke-width: 2; transition: all .3s ease; }
+  .g-edge.visited { stroke: var(--compare); }
+  .g-edge.path { stroke: var(--done); stroke-width: 4; }
+  .g-edge-label { fill: var(--text-muted); font-family: var(--mono); font-size: 10px; }
+  .g-node circle { fill: var(--surface-3); stroke: var(--border-strong); stroke-width: 2; transition: all .3s ease; }
+  .g-node.visiting circle { fill: var(--accent-dim); stroke: var(--accent); }
+  .g-node.visited circle { fill: var(--compare-dim); stroke: var(--compare); }
+  .g-node.path circle { fill: var(--done-dim); stroke: var(--done); stroke-width: 3; }
+  .g-node text.lbl { fill: var(--text); font-size: 15px; font-weight: 600; text-anchor: middle; }
+  .g-node text.dist { fill: var(--text-secondary); font-family: var(--mono); font-size: 10px; text-anchor: middle; }
+
+  /* ---------- Knapsack viz ---------- */
+  .pack-wrap { display: flex; gap: 30px; align-items: flex-start; flex-wrap: wrap; justify-content: center; }
+  .pack-items { display: flex; flex-direction: column; gap: 8px; }
+  .pack-item {
+    display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-radius: 8px;
+    border: 1.5px solid var(--border-strong); background: var(--surface-3); width: 220px;
+    transition: all .3s ease;
+  }
+  .pack-item .ic { font-size: 18px; }
+  .pack-item .meta { display: flex; flex-direction: column; }
+  .pack-item .meta .n { font-size: 12.5px; font-weight: 500; }
+  .pack-item .meta .m { font-family: var(--mono); font-size: 10.5px; color: var(--text-muted); }
+  .pack-item.chosen { border-color: var(--done); background: var(--done-dim); }
+  .pack-item.considering { border-color: var(--accent); background: var(--accent-dim); }
+  .pack-item.rejected { opacity: .4; }
+  .suitcase {
+    width: 190px; border: 2px dashed var(--border-strong); border-radius: 12px;
+    padding: 12px; display: flex; flex-direction: column; gap: 6px; min-height: 160px;
+  }
+  .suitcase .cap { font-family: var(--mono); font-size: 11px; color: var(--text-secondary); text-align: center; margin-bottom: 4px;}
+  .suitcase .bar-bg { height: 10px; background: var(--surface-2); border-radius: 5px; overflow: hidden; border: 1px solid var(--border); }
+  .suitcase .bar-fill { height: 100%; background: var(--accent); transition: width .4s ease; }
+
+  /* ---------- Linked list / train viz ---------- */
+  .train-row { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; justify-content: center; }
+  .car {
+    width: 64px; height: 50px; border-radius: 8px; background: var(--surface-3);
+    border: 1.5px solid var(--border-strong); display: flex; align-items: center; justify-content: center;
+    font-family: var(--mono); font-weight: 600; font-size: 14px; position: relative;
+    transition: all .35s ease;
+  }
+  .car.active { border-color: var(--accent); background: var(--accent-dim); color: var(--accent-soft); }
+  .car.done { border-color: var(--done); background: var(--done-dim); color: var(--done); }
+  .arrow { font-size: 16px; color: var(--text-muted); transition: transform .3s ease; }
+  .arrow.flipped { transform: scaleX(-1); color: var(--swap); }
+
+  /* ---------- Tree viz ---------- */
+  svg.tree-svg { max-width: 100%; }
+  .t-node circle { fill: var(--surface-3); stroke: var(--border-strong); stroke-width: 2; transition: all .3s ease; }
+  .t-node.compare circle { fill: var(--compare-dim); stroke: var(--compare); }
+  .t-node.placed circle { fill: var(--done-dim); stroke: var(--done); }
+  .t-node text { fill: var(--text); font-size: 13px; font-weight: 600; text-anchor: middle; }
+  .t-edge { stroke: var(--border-strong); stroke-width: 2; }
+
+  /* ---------- IRL chips ---------- */
+  .irl { margin-top: 18px; }
+  .irl h3 { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-muted); margin-bottom: 10px; font-weight: 600; }
+  .irl-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .irl-chip {
+    display: flex; align-items: center; gap: 7px; font-size: 12.5px; color: var(--text-secondary);
+    background: var(--surface-2); border: 1px solid var(--border); padding: 6px 11px; border-radius: 20px;
+  }
+
+  /* ---------- Stub card ---------- */
+  .stub-card {
+    margin-top: 18px; padding: 24px; background: var(--surface); border: 1px dashed var(--border-strong);
+    border-radius: 12px; text-align: center; color: var(--text-secondary); font-size: 13px;
+  }
+  .stub-card .ic { font-size: 26px; margin-bottom: 8px; }
+
+  ::-webkit-scrollbar { width: 9px; height: 9px; }
+  ::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <header>
+    <div class="brand">
+      <div class="mark">A</div>
+      <div class="name">Algo-Visualizer <span>· Scenario Lens (prototype)</span></div>
+    </div>
+    <div class="mode-toggle">
+      <button id="mode-abstract" class="active" onclick="setMode('abstract')">🔷 Abstract</button>
+      <button id="mode-scenario" onclick="setMode('scenario')">🌍 Real-World</button>
+    </div>
+  </header>
+
+  <div class="layout">
+    <nav class="sidebar" id="sidebar"></nav>
+
+    <main class="stage">
+      <div class="stage-inner" id="stage-inner"></div>
+    </main>
+  </div>
+</div>
+
+<script>
+/* =========================================================================
+   DATA — every category from the catalog. Each algo has:
+   - name, complexity
+   - scenario: { icon, title, sub, blurb, irl: [ {icon, text} ] }
+   - demo: key of an implemented interactive demo, OR null (stub card)
+   ========================================================================= */
+
+const CATALOG = [
+  { cat: 'Sorting', icon: '🔀', algos: [
+    { name: 'Bubble Sort', complexity: 'O(n²) time · O(1) space', demo: 'sort',
+      scenario: { icon:'📦', title:'Warehouse Sorting Line', sub:'Sorting packages by weight before loading a delivery truck',
+        blurb: 'A conveyor belt carries packages of different weights. Two neighbouring packages are compared at a time — if the one closer to the truck is heavier, they swap places. Repeat enough passes and the lightest packages end up loaded first, heaviest last, so the truck balances safely.',
+        irl: [ {icon:'📦', text:'Package loading order'}, {icon:'🎟️', text:'Sorting a small stack of ticket stubs'}, {icon:'🏫', text:'Teaching sorting to beginners'} ] } },
+    { name: 'Insertion Sort', complexity: 'O(n²) time · O(1) space', demo: null,
+      scenario: { icon:'🃏', title:'Sorting a Hand of Playing Cards', sub:'Inserting each new card into its correct spot among the ones already sorted',
+        blurb: 'Picture holding a hand of cards. You pick up cards one at a time and slide each new card into its correct position relative to the ones you\'re already holding — exactly how insertion sort builds a sorted array left to right.',
+        irl: [ {icon:'🃏', text:'Sorting cards in your hand'}, {icon:'📥', text:'Inserting a new order into a sorted queue'} ] } },
+    { name: 'Merge Sort', complexity: 'O(n log n) time · O(n) space', demo: null,
+      scenario: { icon:'📚', title:'Merging Two Sorted Bookshelves', sub:'Combining two already-alphabetised shelves into one',
+        blurb: 'Two librarians each sort half the returned books, then stand side by side merging their two sorted stacks into one — always taking whichever book comes first alphabetically. That merge step, repeated recursively on smaller and smaller stacks, is merge sort.',
+        irl: [ {icon:'📚', text:'Merging two sorted book piles'}, {icon:'🧾', text:'Combining two sorted invoice logs'} ] } },
+    { name: 'Quick Sort', complexity: 'O(n log n) avg · O(log n) space', demo: null,
+      scenario: { icon:'🎯', title:'Splitting a Crowd by a Reference Height', sub:'Picking one person as a pivot and splitting everyone shorter/taller around them',
+        blurb: 'Pick one person as a reference ("pivot"). Everyone shorter steps to the left, everyone taller steps to the right. Now repeat that same trick within each smaller group — that recursive partitioning is exactly quicksort.',
+        irl: [ {icon:'🧍', text:'Lining people up by height at events'}, {icon:'💰', text:'Splitting transactions above/below a threshold'} ] } },
+    { name: 'Heap Sort', complexity: 'O(n log n) time · O(1) space', demo: null,
+      scenario: { icon:'🏥', title:'Emergency Room Re-Triage', sub:'Repeatedly pulling out the most urgent patient from a shifting waiting room',
+        blurb: 'A max-heap keeps the most urgent patient always at the front. Pull them out, and the next-most-urgent patient bubbles up to take their place. Do that repeatedly and you get patients discharged to treatment in fully sorted priority order.',
+        irl: [ {icon:'🚑', text:'ER patient re-prioritisation'} ] } },
+    { name: 'Counting Sort', complexity: 'O(n+k) time · O(k) space', demo: null,
+      scenario: { icon:'🗳️', title:'Tallying Election Ballots', sub:'Counting votes per candidate, then reconstructing order from the tallies',
+        blurb: 'Instead of comparing ballots to each other, you just tally how many votes each candidate got in labelled bins, then read the bins off in order. No comparisons needed — only works because the range of possible values (candidates) is small and known.',
+        irl: [ {icon:'🗳️', text:'Tallying votes by candidate'}, {icon:'🎓', text:'Grouping exam scores 0–100'} ] } },
+    { name: 'Radix Sort', complexity: 'O(d(n+k)) time · O(n+k) space', demo: null,
+      scenario: { icon:'📮', title:'Sorting Mail by Postal Code', sub:'Sorting digit-by-digit, rightmost digit first, like postal sorting machines',
+        blurb: 'A postal sorting machine buckets letters by the last digit of the zip code, collects them back up, then re-buckets by the next digit over — repeating until every digit has been used. No two letters are ever compared directly to each other.',
+        irl: [ {icon:'📮', text:'Postal/zip code sorting machines'} ] } },
+  ]},
+
+  { cat: 'Searching', icon: '🔍', algos: [
+    { name: 'Binary Search', complexity: 'O(log n) time · O(1) space', demo: 'search',
+      scenario: { icon:'📖', title:'Looking Up a Word in a Dictionary', sub:'Flipping to the middle, then halving the remaining pages each time',
+        blurb: 'You don\'t read a dictionary front to back to find "quartz" — you open to the middle, see you\'ve landed too far ("R"), and flip back halfway again. Each guess eliminates half the remaining pages, which is why it only takes a handful of flips even for a huge book.',
+        irl: [ {icon:'📖', text:'Dictionary / phone book lookup'}, {icon:'🐛', text:'Git bisect to find a bad commit'}, {icon:'🎚️', text:'Guessing a number in a range'} ] } },
+    { name: 'Linear Search', complexity: 'O(n) time · O(1) space', demo: null,
+      scenario: { icon:'🎒', title:'Digging Through an Unsorted Bag', sub:'Checking every item one by one until you find your keys',
+        blurb: 'Your bag isn\'t organised, so finding your keys means checking item after item until you feel them. No shortcuts — that\'s linear search: works on anything, but scales with how much stuff is in the bag.',
+        irl: [ {icon:'🎒', text:'Finding keys in an unsorted bag'}, {icon:'📼', text:'Scanning an unsorted playlist for a track'} ] } },
+    { name: 'Ternary Search', complexity: 'O(log₃ n) time · O(1) space', demo: null,
+      scenario: { icon:'🎚️', title:'Tuning a Radio Dial to Peak Signal', sub:'Splitting the dial into thirds to zero in on the strongest signal',
+        blurb: 'Instead of halving like binary search, you check two points that split the range into thirds, keep the third that\'s trending toward the peak, and repeat — useful when you\'re hunting for a single maximum/minimum rather than an exact match.',
+        irl: [ {icon:'📻', text:'Tuning to the strongest signal'} ] } },
+  ]},
+
+  { cat: 'Linked Lists', icon: '🔗', algos: [
+    { name: 'Reverse a Linked List', complexity: 'O(n) time · O(1) space', demo: 'list',
+      scenario: { icon:'🚂', title:'Turning a Train Around', sub:'Flipping each coupling one car at a time until the whole train faces the other way',
+        blurb: 'Each train car is only coupled to the next one — it has no idea what\'s further down the line. To reverse the train, you walk car by car and flip each coupling to point backward instead of forward, one at a time, until the whole train faces the opposite direction.',
+        irl: [ {icon:'🚂', text:'Reversing a train\'s direction'}, {icon:'↩️', text:'Undo/redo history chains'} ] } },
+    { name: 'Merge Two Sorted Lists', complexity: 'O(n+m) time · O(1) space', demo: null,
+      scenario: { icon:'🚃', title:'Coupling Two Trains Into One', sub:'Interleaving two sorted trains car-by-car by their station order',
+        blurb: 'Two trains are each already sorted by upcoming station. To combine them into a single sorted train, you repeatedly grab whichever front car has the nearer station and couple it on — the same logic as merging two sorted linked lists.',
+        irl: [ {icon:'🚃', text:'Combining two sorted queues into one'} ] } },
+  ]},
+
+  { cat: 'Trees', icon: '🌳', algos: [
+    { name: 'BST Insert / Delete / Search', complexity: 'O(log n) avg · O(n) space', demo: 'tree',
+      scenario: { icon:'🗂️', title:'Filing a Document by Reference Number', sub:'At every folder, go left if your number is smaller, right if it\'s bigger',
+        blurb: 'A filing cabinet is organised as a tree of folders. To file (or find) a document, you compare its number to the folder in front of you: smaller goes left, larger goes right, and you repeat until you land in the right spot. Same rule, insert or search.',
+        irl: [ {icon:'🗂️', text:'Filing systems / reference lookups'}, {icon:'🏪', text:'Product catalog category drill-down'} ] } },
+    { name: 'Inorder / Preorder / Postorder Traversal', complexity: 'O(n) time · O(h) space', demo: null,
+      scenario: { icon:'🏢', title:'Touring an Org Chart', sub:'Different orders for visiting every person in a company hierarchy',
+        blurb: 'Visiting everyone in a company\'s reporting structure can happen in different orders: report on the manager first then their team (preorder), or visit the team then summarize with the manager (postorder). Same tree, different tour itinerary.',
+        irl: [ {icon:'🏢', text:'Walking an org chart top-down or bottom-up'}, {icon:'🧾', text:'Rendering nested folder structures'} ] } },
+    { name: 'Level-Order (BFS) Traversal', complexity: 'O(n) time · O(n) space', demo: null,
+      scenario: { icon:'🏬', title:'Announcing Floor by Floor', sub:'Visiting a building one whole floor at a time before moving to the next',
+        blurb: 'A fire warden clears a building floor by floor, not room-by-room down one staircase — every room on floor 1, then every room on floor 2. That\'s level-order traversal: visit every node at the current depth before going deeper.',
+        irl: [ {icon:'🏬', text:'Floor-by-floor building announcements'}, {icon:'👥', text:'"Friends of friends" social suggestions'} ] } },
+    { name: 'AVL Tree Rotations', complexity: 'O(log n) time · O(1) space/op', demo: null,
+      scenario: { icon:'⚖️', title:'Rebalancing an Overloaded Bookshelf Ladder', sub:'Shuffling shelves so no single side of the ladder gets too tall to reach',
+        blurb: 'If one branch of a filing tree grows much taller than the other, lookups on that side get slow. A rotation quietly reshuffles a few folders so both sides stay roughly balanced — like re-distributing books so no shelf ladder leans dangerously to one side.',
+        irl: [ {icon:'⚖️', text:'Keeping lookup structures balanced under load'} ] } },
+    { name: 'Trie Insert / Search', complexity: 'O(L) time (L=word length)', demo: null,
+      scenario: { icon:'✍️', title:'Autocomplete While Typing', sub:'Each keystroke walks one level deeper into a tree of shared prefixes',
+        blurb: 'When your phone suggests words as you type, it\'s walking a tree where every branch is one letter. "CAR" and "CAT" share the same first two branches and split at the third letter — so common prefixes are stored once, and autocomplete is just "how far down can I still go".',
+        irl: [ {icon:'✍️', text:'Autocomplete / predictive text'}, {icon:'🌐', text:'IP routing table lookups'} ] } },
+    { name: 'Lowest Common Ancestor', complexity: 'O(log n)–O(n) time', demo: null,
+      scenario: { icon:'👪', title:'Finding a Shared Ancestor on a Family Tree', sub:'The closest relative that connects two people on a genealogy chart',
+        blurb: 'Given two people on a family tree, their lowest common ancestor is the closest relative both descend from. It\'s the same question as "what\'s the nearest shared manager of these two employees" on an org chart.',
+        irl: [ {icon:'👪', text:'Genealogy "how are we related" lookups'}, {icon:'🏢', text:'Nearest shared manager in an org chart'} ] } },
+  ]},
+
+  { cat: 'Heaps & Priority Queues', icon: '🏔️', algos: [
+    { name: 'Heap Insert / Extract-Min', complexity: 'O(log n) per op', demo: null,
+      scenario: { icon:'🚑', title:'Hospital Triage Queue', sub:'Whoever is most critical is always pulled next, regardless of arrival time',
+        blurb: 'A triage nurse doesn\'t treat patients in the order they walked in — the most critical patient always gets pulled next, and every new arrival slots in based on severity, not queue position. That\'s a priority queue (min-heap) in action.',
+        irl: [ {icon:'🚑', text:'ER triage ordering'}, {icon:'🖥️', text:'OS process/task scheduling'} ] } },
+    { name: 'Build Heap (Heapify)', complexity: 'O(n) time', demo: null,
+      scenario: { icon:'📋', title:'Turning a Messy Sign-Up Sheet Into a Priority List', sub:'Reorganising an unsorted list into valid priority order all at once',
+        blurb: 'Instead of inserting patients one at a time into a triage queue, imagine getting a messy list of everyone already in the waiting room and needing to instantly reorganise it into valid priority order — that bulk reorganisation is heapify.',
+        irl: [ {icon:'📋', text:'Bulk-loading an existing list into a priority queue'} ] } },
+    { name: 'K-th Largest Element', complexity: 'O(n log k) time', demo: null,
+      scenario: { icon:'🏆', title:'Finding the 3rd-Highest Bid', sub:'Tracking only the top few candidates instead of ranking everyone',
+        blurb: 'In an auction with thousands of bids, you don\'t need to fully sort every bid to know the 3rd highest — you just keep a small "top 3 so far" pool and swap the weakest one out whenever a stronger bid comes in.',
+        irl: [ {icon:'🏆', text:'Leaderboards / top-N bids'} ] } },
+  ]},
+
+  { cat: 'Graphs', icon: '🕸️', algos: [
+    { name: 'A* Search', complexity: 'O(E) time w/ heuristic', demo: 'graph',
+      scenario: { icon:'🗺️', title:'GPS Turn-by-Turn Navigation', sub:'Finding the fastest route between two cities on a road network',
+        blurb: 'Every road is a connection with a travel cost (distance or time). Starting from home, the algorithm keeps exploring the currently-cheapest-known road outward, updating "fastest way there so far" for each city it reaches, until it locks in the shortest path to work.',
+        irl: [ {icon:'🗺️', text:'GPS / maps routing'}, {icon:'🎮', text:'NPC pathfinding in games'}, {icon:'🚚', text:'Delivery route planning'} ] } },
+    { name: 'Breadth-First Search', complexity: 'O(V+E) time', demo: null,
+      scenario: { icon:'👥', title:'"Friends of Friends" on a Social Network', sub:'Finding everyone within N connections of you, one ring at a time',
+        blurb: 'To find everyone within "2 degrees" of you, you first list your direct friends, then their friends, expanding outward one full ring at a time rather than chasing one deep friend chain first. That ring-by-ring expansion is BFS, and it always finds the shortest connection first.',
+        irl: [ {icon:'👥', text:'"People you may know" suggestions'}, {icon:'🧩', text:'Shortest moves in a puzzle/maze'} ] } },
+    { name: 'Depth-First Search', complexity: 'O(V+E) time', demo: null,
+      scenario: { icon:'🌀', title:'Solving a Maze by Committing to One Path', sub:'Following a corridor as far as it goes, backtracking only when stuck',
+        blurb: 'In a maze, DFS is the strategy of committing fully to one corridor, following it until you hit a dead end, and only then backing up to try the last unexplored branch — as opposed to exploring every nearby branch evenly like BFS does.',
+        irl: [ {icon:'🌀', text:'Maze solving'}, {icon:'📁', text:'Recursively walking a folder tree'} ] } },
+    { name: 'Bellman-Ford', complexity: 'O(V·E) time', demo: null,
+      scenario: { icon:'💱', title:'Spotting Profitable Currency Exchange Loops', sub:'Shortest paths that also tolerate "costs" that can go negative',
+        blurb: 'Some routes have a cost that can effectively be negative — like a currency exchange chain that circles back for a profit. Bellman-Ford still finds shortest paths in that world, and as a bonus flags cycles where costs keep dropping forever (arbitrage).',
+        irl: [ {icon:'💱', text:'Currency arbitrage detection'}, {icon:'🛣️', text:'Routing with discounts/rebates as negative cost'} ] } },
+    { name: 'Floyd-Warshall', complexity: 'O(V³) time', demo: null,
+      scenario: { icon:'🧮', title:'Building a "Distance Between Any Two Cities" Table', sub:'Precomputing every shortest route between every pair of cities at once',
+        blurb: 'A road atlas\'s mileage chart shows the driving distance between every pair of cities, not just one route. Floyd-Warshall builds that entire table at once by checking, for every pair, whether routing through some middle city is a shortcut.',
+        irl: [ {icon:'🧮', text:'All-pairs mileage charts'}, {icon:'🌐', text:'Network latency tables between all servers'} ] } },
+    { name: 'Topological Sort', complexity: 'O(V+E) time', demo: null,
+      scenario: { icon:'👨‍🍳', title:'Ordering Recipe Steps With Dependencies', sub:'Sequencing tasks so nothing runs before what it depends on',
+        blurb: 'You can\'t frost a cake before it\'s baked, and you can\'t bake it before the batter\'s mixed. Topological sort takes a web of "must happen before" rules and produces one valid order that respects every dependency — recipes, build systems, course prerequisites.',
+        irl: [ {icon:'👨‍🍳', text:'Recipe / assembly step ordering'}, {icon:'🎓', text:'Course prerequisite planning'}, {icon:'🛠️', text:'Build system task ordering'} ] } },
+    { name: 'Union-Find / Disjoint Set', complexity: '~O(1) amortized per op', demo: null,
+      scenario: { icon:'👨‍👩‍👧', title:'Tracking Which Friend Groups Have Merged', sub:'Quickly answering "are these two people in the same group?" as groups combine',
+        blurb: 'At a party, groups of friends mingle and merge over the night. Union-Find keeps track of who\'s in which cluster and can instantly answer "are these two in the same group now?" or merge two groups together, without re-scanning everyone.',
+        irl: [ {icon:'👨‍👩‍👧', text:'Social circle / cluster merging'}, {icon:'🖼️', text:'Detecting connected regions in an image'} ] } },
+  ]},
+
+  { cat: 'Dynamic Programming', icon: '🧩', algos: [
+    { name: '0/1 Knapsack', complexity: 'O(n·W) time · O(n·W) space', demo: 'knapsack',
+      scenario: { icon:'🧳', title:'Packing a Weight-Limited Suitcase', sub:'Choosing which items to bring for the most value without exceeding baggage limits',
+        blurb: 'Airlines cap your baggage weight, but not every item is equally valuable to bring. The algorithm checks, item by item, whether including it (and bumping something else) beats leaving it out — building up the best possible combination for every possible weight limit along the way.',
+        irl: [ {icon:'🧳', text:'Packing luggage under a weight limit'}, {icon:'💰', text:'Budget-constrained project selection'} ] } },
+    { name: 'Longest Common Subsequence', complexity: 'O(n·m) time', demo: null,
+      scenario: { icon:'🧬', title:'Comparing Two DNA Strands', sub:'Finding the longest sequence both strands share, in order',
+        blurb: 'Two DNA strands rarely match exactly, but they often share a long sub-pattern in the same relative order. LCS finds the longest such shared thread — the same technique powers "track changes" style diffing between two documents.',
+        irl: [ {icon:'🧬', text:'DNA sequence comparison'}, {icon:'📝', text:'Document diff / "track changes"'} ] } },
+    { name: 'Longest Increasing Subsequence', complexity: 'O(n log n) time', demo: null,
+      scenario: { icon:'📈', title:'Finding the Longest Winning Streak of Growth', sub:'The longest run of values that keep increasing, skipping the dips',
+        blurb: 'Given a stock\'s daily prices, LIS finds the longest stretch of days you could have picked (not necessarily consecutive) where the price kept climbing — useful for spotting the best underlying growth trend hidden inside noisy data.',
+        irl: [ {icon:'📈', text:'Spotting growth trends in noisy data'} ] } },
+    { name: 'Edit Distance', complexity: 'O(n·m) time', demo: null,
+      scenario: { icon:'🔤', title:'Spell-Checker Suggestions', sub:'Counting the fewest edits to turn a typo into a real word',
+        blurb: 'When you type "recieve", a spell-checker measures how many single-letter edits (insert, delete, substitute) it takes to turn your typo into "receive" versus every other candidate word, and suggests the one needing the fewest edits.',
+        irl: [ {icon:'🔤', text:'Spell-check suggestions'}, {icon:'🧬', text:'DNA mutation distance'} ] } },
+    { name: 'Coin Change', complexity: 'O(n·amount) time', demo: null,
+      scenario: { icon:'🪙', title:'Making Exact Change With Fewest Coins', sub:'Choosing coin denominations to hit an amount using as few coins as possible',
+        blurb: 'A cashier making change for $0.67 wants the fewest coins possible. Coin change DP works out, for every smaller amount along the way, the minimum coins needed — building up to the full amount instead of greedily guessing.',
+        irl: [ {icon:'🪙', text:'Making change with minimum coins'}, {icon:'📦', text:'Filling an order using fewest package sizes'} ] } },
+    { name: 'Matrix Chain Multiplication', complexity: 'O(n³) time', demo: null,
+      scenario: { icon:'🏗️', title:'Choosing the Cheapest Build Order for a Pipeline', sub:'Grouping a chain of operations to minimize total work',
+        blurb: 'Multiplying a chain of matrices in a different grouping order can be far cheaper computationally even though the result is identical — like choosing which sub-assemblies to build first on a factory line to minimize total effort.',
+        irl: [ {icon:'🏗️', text:'Optimal computation/build ordering'} ] } },
+    { name: 'Fibonacci (memoized)', complexity: 'O(n) time · O(n) space', demo: null,
+      scenario: { icon:'🐇', title:'Not Re-Solving a Question You Already Answered', sub:'Caching answers to repeated sub-questions instead of recomputing them',
+        blurb: 'Without memoization, computing Fibonacci recomputes the same smaller values over and over — like a group project where nobody checks if a teammate already finished a subtask. Caching each answer the first time avoids all that repeated work.',
+        irl: [ {icon:'🐇', text:'Caching repeated sub-computations'}, {icon:'🌐', text:'Web request/response caching'} ] } },
+  ]},
+
+  { cat: 'Backtracking', icon: '🧭', algos: [
+    { name: 'N-Queens', complexity: 'O(N!) worst case', demo: null,
+      scenario: { icon:'♛', title:'Seating Guests With No Two in the Same Line of Sight', sub:'Placing pieces one at a time, undoing a placement the moment it conflicts',
+        blurb: 'You seat guests one at a time at a banquet table, making sure no two can see each other along a row, column, or diagonal sightline. The moment a new placement creates a conflict, you undo it and try the next seat — that\'s backtracking.',
+        irl: [ {icon:'♛', text:'Constraint-based seating/scheduling'} ] } },
+    { name: 'Sudoku Solver', complexity: 'Exponential worst case', demo: null,
+      scenario: { icon:'🔢', title:'Filling a Sudoku Grid', sub:'Trying a digit, undoing it the instant a row/column/box rule breaks',
+        blurb: 'You place a candidate digit, and the moment it breaks a row, column, or box rule, you erase it and try the next digit — backing out of failed guesses instead of grinding forward blindly. That trial-and-undo loop is backtracking in its purest form.',
+        irl: [ {icon:'🔢', text:'Sudoku / logic puzzle solving'} ] } },
+    { name: 'Permutations / Subsets', complexity: 'O(2ⁿ) or O(n!)', demo: null,
+      scenario: { icon:'👕', title:'Trying Every Outfit Combination', sub:'Building every combination by adding/removing one item at a time',
+        blurb: 'To list every possible outfit from a small wardrobe, you add one item, recurse into all combinations that include it, then remove it and recurse into all combinations without it — systematically generating every subset or ordering.',
+        irl: [ {icon:'👕', text:'Enumerating outfit/combo options'}, {icon:'🧪', text:'Testing all feature-flag combinations'} ] } },
+    { name: 'Rat in a Maze', complexity: 'O(2^(n²)) worst case', demo: null,
+      scenario: { icon:'🐀', title:'A Mouse Exploring a Maze for Cheese', sub:'Trying a direction, backing out the moment it\'s a dead end',
+        blurb: 'A mouse tries a direction, and if it leads to a wall, it retraces its steps back to the last junction and tries a different direction — never repeating a dead-end path. That\'s literally the textbook framing backtracking is named after.',
+        irl: [ {icon:'🐀', text:'Maze solving with dead-end recovery'} ] } },
+  ]},
+
+  { cat: 'Greedy', icon: '🎯', algos: [
+    { name: 'Activity Selection', complexity: 'O(n log n) time', demo: null,
+      scenario: { icon:'📅', title:'Booking the Most Meetings Into One Room', sub:'Always picking the next meeting that ends soonest',
+        blurb: 'You have one conference room and a pile of meeting requests with start/end times. Greedily always picking whichever remaining meeting ends soonest (and doesn\'t overlap what you\'ve already booked) turns out to maximize the total meetings you can fit.',
+        irl: [ {icon:'📅', text:'Meeting room scheduling'}, {icon:'🎬', text:'Fitting the most movies into one screen\'s day'} ] } },
+    { name: 'Huffman Coding', complexity: 'O(n log n) time', demo: null,
+      scenario: { icon:'📡', title:'Shrinking a Message for Cheaper Transmission', sub:'Giving common letters shorter codes, rare letters longer ones',
+        blurb: 'Morse code already does this intuitively: "E", the most common English letter, gets a single dot. Huffman coding formalizes that idea — build shorter binary codes for frequent characters and longer ones for rare characters, shrinking the average message size.',
+        irl: [ {icon:'📡', text:'File/text compression (zip, image formats)'} ] } },
+    { name: 'Fractional Knapsack', complexity: 'O(n log n) time', demo: null,
+      scenario: { icon:'🛢️', title:'Filling a Tanker With the Most Valuable Cargo per Litre', sub:'Taking as much as possible of the highest value-per-unit cargo first',
+        blurb: 'Unlike suitcase packing, here cargo can be split — think oil, grain, or fuel. You fill up on the highest value-per-litre cargo first, then the next best, topping off the tank exactly at its limit. Being able to take partial amounts is what makes the greedy approach provably optimal here.',
+        irl: [ {icon:'🛢️', text:'Filling capacity with divisible high-value cargo'} ] } },
+  ]},
+
+  { cat: 'Strings', icon: '🔤', algos: [
+    { name: 'KMP Pattern Matching', complexity: 'O(n+m) time', demo: null,
+      scenario: { icon:'🔎', title:'"Find" in a Word Processor, Without Restarting From Scratch', sub:'Reusing partial matches instead of re-scanning from the mismatch point',
+        blurb: 'A naive text search restarts from scratch after every near-miss. KMP precomputes how much of a partial match can be reused, so a mismatch doesn\'t throw away everything you already confirmed — like Ctrl+F skipping redundant re-checking on a long document.',
+        irl: [ {icon:'🔎', text:'Ctrl+F / find-in-document'}, {icon:'🧬', text:'DNA motif searching'} ] } },
+    { name: 'Rabin-Karp', complexity: 'O(n+m) avg time', demo: null,
+      scenario: { icon:'🎼', title:'Detecting a Plagiarized Passage', sub:'Comparing rolling "fingerprints" of text chunks instead of every character',
+        blurb: 'Instead of comparing every character of a suspected copied passage, Rabin-Karp hashes a rolling window of the text into a quick "fingerprint" and only does a full character check when fingerprints match — much faster for scanning large documents.',
+        irl: [ {icon:'🎓', text:'Plagiarism / duplicate content detection'} ] } },
+    { name: 'Z-Algorithm', complexity: 'O(n) time', demo: null,
+      scenario: { icon:'🪞', title:'Finding Every Place a Phrase Repeats', sub:'Measuring, at every position, how far the text matches its own beginning',
+        blurb: 'The Z-algorithm scans a string once and, at every position, records how long a match against the very start of the string extends — instantly revealing every repeated occurrence of the opening phrase without rechecking from scratch each time.',
+        irl: [ {icon:'🪞', text:'Finding all repeats of a phrase in a document'} ] } },
+    { name: 'Longest Palindromic Substring', complexity: 'O(n²) or O(n) (Manacher)', demo: null,
+      scenario: { icon:'🔁', title:'Finding the Longest Mirror-Image Word Inside Text', sub:'Expanding outward from each center to find the longest symmetric stretch',
+        blurb: 'From every possible center point in a string, you expand outward while the left and right characters still mirror each other, tracking the longest stretch that stays symmetric — like finding "racecar" hiding inside a longer sentence.',
+        irl: [ {icon:'🔁', text:'Symmetric pattern detection in text/DNA'} ] } },
+  ]},
+
+  { cat: 'Math & Bit Manipulation', icon: '➗', algos: [
+    { name: 'Sieve of Eratosthenes', complexity: 'O(n log log n) time', demo: null,
+      scenario: { icon:'🎫', title:'Crossing Out Non-Winning Raffle Numbers', sub:'Eliminating every multiple of each number, leaving only primes standing',
+        blurb: 'Starting from 2, cross out every multiple of it. Move to the next number left standing, cross out its multiples too, and keep going. Whatever numbers survive the entire process are exactly the primes — fast because you never test individual numbers one by one for primality.',
+        irl: [ {icon:'🔐', text:'Generating primes for cryptographic keys'} ] } },
+    { name: 'GCD / LCM (Euclidean)', complexity: 'O(log(min(a,b))) time', demo: null,
+      scenario: { icon:'🍫', title:'Cutting a Chocolate Bar Into Equal Squares With No Waste', sub:'Finding the largest equal-size piece that divides two bar lengths evenly',
+        blurb: 'Two chocolate bars of different lengths need to be cut into identical-size squares with nothing left over. The Euclidean algorithm finds the largest such square size by repeatedly trading the larger length for the remainder — the same trick used to simplify fractions.',
+        irl: [ {icon:'🍫', text:'Simplifying ratios / fractions'}, {icon:'⏱️', text:'Finding a common repeating interval for events'} ] } },
+    { name: 'Fast Exponentiation', complexity: 'O(log n) time', demo: null,
+      scenario: { icon:'🦠', title:'Modeling Rapid Population Doubling', sub:'Computing huge powers by repeatedly squaring instead of repeated multiplying',
+        blurb: 'Multiplying a number by itself 1,000 times one step at a time is slow. Fast exponentiation instead squares the running result and halves the exponent each round, reaching huge powers (like population doubling forecasts, or cryptographic keys) in a fraction of the steps.',
+        irl: [ {icon:'🔐', text:'Modular exponentiation in cryptography (RSA)'} ] } },
+    { name: 'Bit Manipulation Basics', complexity: 'O(1)–O(log n) per op', demo: null,
+      scenario: { icon:'🚦', title:'Toggling a Bank of Light Switches', sub:'Flipping, checking, or masking individual switches in a row using flags',
+        blurb: 'A row of on/off switches (bits) can represent settings compactly — like feature flags for a product, where each bit toggles one feature on or off independently, and bitwise operations flip or check any switch instantly without touching the others.',
+        irl: [ {icon:'🚦', text:'Feature flags / permission flags'}, {icon:'🎨', text:'Packing RGB color channels into one number'} ] } },
+  ]},
+];
+
+/* =========================================================================
+   FLATTEN + STATE
+   ========================================================================= */
+let mode = 'abstract'; // or 'scenario'
+let current = null; // {cat, algo}
+let player = { frames: [], idx: 0, timer: null, speed: 650, render: null };
+
+function findAlgo(catName, algoName) {
+  const cat = CATALOG.find(c => c.cat === catName);
+  return cat.algos.find(a => a.name === algoName);
+}
+
+function setMode(m) {
+  mode = m;
+  document.getElementById('mode-abstract').classList.toggle('active', m === 'abstract');
+  document.getElementById('mode-scenario').classList.toggle('active', m === 'scenario');
+  if (current) renderStage(current.cat, current.algo);
+}
+
+/* =========================================================================
+   SIDEBAR
+   ========================================================================= */
+function buildSidebar() {
+  const sb = document.getElementById('sidebar');
+  sb.innerHTML = '';
+  CATALOG.forEach((cat, ci) => {
+    const wrap = document.createElement('div');
+    wrap.className = 'cat' + (ci === 5 ? ' open' : ''); // open Graphs by default
+    wrap.innerHTML = `
+      <button class="cat-head" onclick="this.parentElement.classList.toggle('open')">
+        <span>${cat.icon}</span><span>${cat.cat}</span><span class="chev">▸</span>
+      </button>
+      <div class="cat-items">
+        ${cat.algos.map(a => `
+          <button class="item" data-cat="${cat.cat}" data-algo="${a.name}" onclick="selectAlgo('${cat.cat.replace(/'/g,"\\'")}','${a.name.replace(/'/g,"\\'")}')">
+            <span class="icn">${a.scenario.icon}</span><span>${a.name}</span>
+            ${a.demo ? '' : '<span class="stub-tag">concept</span>'}
+          </button>`).join('')}
+      </div>`;
+    sb.appendChild(wrap);
+  });
+}
+
+function selectAlgo(catName, algoName) {
+  current = { cat: catName, algo: algoName };
+  document.querySelectorAll('.item').forEach(el => {
+    el.classList.toggle('active', el.dataset.cat === catName && el.dataset.algo === algoName);
+  });
+  renderStage(catName, algoName);
+}
+
+/* =========================================================================
+   STAGE RENDER
+   ========================================================================= */
+function stopPlayer() {
+  if (player.timer) { clearInterval(player.timer); player.timer = null; }
+}
+
+function renderStage(catName, algoName) {
+  stopPlayer();
+  const algo = findAlgo(catName, algoName);
+  const s = algo.scenario;
+  const inner = document.getElementById('stage-inner');
+
+  const modeLabel = mode === 'scenario' ? s.title : algo.name;
+  const modeSub = mode === 'scenario' ? s.sub : `Abstract data view — ${algo.complexity}`;
+  const icon = mode === 'scenario' ? s.icon : (catName === 'Sorting' ? '📊' : catName === 'Graphs' ? '🔵' : catName === 'Trees' ? '🌳' : catName === 'Linked Lists' ? '⛓️' : catName === 'Dynamic Programming' ? '🔢' : '📊');
+
+  inner.innerHTML = `
+    <div class="scenario-head">
+      <div class="crumb">${catName} / ${algo.name}</div>
+      <div class="title-row">
+        <div class="big-icn">${icon}</div>
+        <div>
+          <h1>${modeLabel}</h1>
+          <div class="sub">${modeSub}</div>
+          <div class="badges">
+            <span class="badge">${algo.complexity}</span>
+            <span class="badge">${catName}</span>
+          </div>
+        </div>
+      </div>
+      ${mode === 'scenario' ? `<div class="blurb">${s.blurb}</div>` : `<div class="blurb">Same underlying steps as the real-world lens to the right — compare/swap/visit events driving one shared algorithm trace. Toggle <strong>Real-World</strong> above to see it reframed as: <strong>${s.title}</strong>.</div>`}
+    </div>
+
+    <div class="canvas-card">
+      <div class="canvas-toolbar">
+        <button class="ctl-btn" onclick="playerStep(-1)" title="Step back">⏮</button>
+        <button class="ctl-btn primary" id="play-btn" onclick="playerToggle()">▶ Play</button>
+        <button class="ctl-btn" onclick="playerStep(1)" title="Step forward">⏭</button>
+        <button class="ctl-btn" onclick="playerReset()" title="Reset">↺</button>
+        <span class="speed-label">speed</span>
+        <input type="range" min="150" max="1200" value="650" oninput="player.speed = 1350 - Number(this.value); if(player.timer){playerToggle();playerToggle();}">
+      </div>
+      <div class="canvas-body" id="canvas-body"></div>
+    </div>
+
+    ${mode === 'scenario' ? `
+    <div class="irl">
+      <h3>Also shows up in</h3>
+      <div class="irl-chips">${s.irl.map(x => `<div class="irl-chip"><span>${x.icon}</span><span>${x.text}</span></div>`).join('')}</div>
+    </div>` : ''}
+  `;
+
+  if (algo.demo) {
+    initDemo(algo.demo, catName);
+  } else {
+    document.getElementById('canvas-body').innerHTML = `
+      <div class="stub-card" style="border:none; margin:0;">
+        <div class="ic">🚧</div>
+        Interactive animation not wired up in this prototype yet —<br>
+        this card shows how the <strong>real-world mapping</strong> would extend to every algorithm in the catalog.
+      </div>`;
+  }
+}
+
+/* =========================================================================
+   GENERIC PLAYER
+   ========================================================================= */
+function playerReset() {
+  stopPlayer();
+  player.idx = 0;
+  document.getElementById('play-btn').textContent = '▶ Play';
+  if (player.render) player.render(player.frames[0], 0);
+}
+function playerStep(dir) {
+  stopPlayer();
+  document.getElementById('play-btn').textContent = '▶ Play';
+  player.idx = Math.max(0, Math.min(player.frames.length - 1, player.idx + dir));
+  if (player.render) player.render(player.frames[player.idx], player.idx);
+}
+function playerToggle() {
+  const btn = document.getElementById('play-btn');
+  if (player.timer) {
+    stopPlayer();
+    btn.textContent = '▶ Play';
+    return;
+  }
+  btn.textContent = '⏸ Pause';
+  player.timer = setInterval(() => {
+    if (player.idx >= player.frames.length - 1) { stopPlayer(); btn.textContent = '▶ Play'; return; }
+    player.idx++;
+    player.render(player.frames[player.idx], player.idx);
+  }, player.speed);
+}
+
+/* =========================================================================
+   DEMO: SORT  (bubble sort trace)
+   ========================================================================= */
+function buildSortFrames(values) {
+  const arr = [...values];
+  const frames = [{ arr: [...arr], hi: [], swap: [], done: [] }];
+  const n = arr.length;
+  const doneIdx = [];
+  for (let i = 0; i < n; i++) {
+    let swappedAny = false;
+    for (let j = 0; j < n - i - 1; j++) {
+      frames.push({ arr: [...arr], hi: [j, j + 1], swap: [], done: [...doneIdx] });
+      if (arr[j] > arr[j + 1]) {
+        [arr[j], arr[j + 1]] = [arr[j + 1], arr[j]];
+        frames.push({ arr: [...arr], hi: [], swap: [j, j + 1], done: [...doneIdx] });
+        swappedAny = true;
+      }
+    }
+    doneIdx.push(n - i - 1);
+  }
+  for (let i = 0; i < n; i++) if (!doneIdx.includes(i)) doneIdx.push(i);
+  frames.push({ arr: [...arr], hi: [], swap: [], done: [...Array(n).keys()] });
+  return frames;
+}
+
+function initDemo(demo) {
+  if (demo === 'sort') return initSort();
+  if (demo === 'search') return initSearch();
+  if (demo === 'graph') return initGraph();
+  if (demo === 'knapsack') return initKnapsack();
+  if (demo === 'list') return initList();
+  if (demo === 'tree') return initTree();
+}
+
+function initSort() {
+  const values = [72, 34, 58, 12, 90, 45, 23, 66];
+  const frames = buildSortFrames(values);
+  const max = Math.max(...values);
+  const body = document.getElementById('canvas-body');
+  body.innerHTML = `<div class="sort-row" id="sort-row"></div><div class="status-line" id="sort-status"><span class="dot"></span><span id="sort-status-text">Ready</span></div>`;
+  const row = document.getElementById('sort-row');
+
+  const render = (f) => {
+    row.innerHTML = f.arr.map((v, i) => {
+      let cls = '';
+      if (f.done.includes(i)) cls = 'done';
+      else if (f.swap.includes(i)) cls = 'swap';
+      else if (f.hi.includes(i)) cls = 'compare';
+      const h = Math.max((v / max) * 130, 18);
+      const tag = mode === 'scenario' ? (cls === 'swap' ? '🔄' : cls === 'compare' ? '👀' : cls === 'done' ? '✅' : '') : '';
+      const unit = mode === 'scenario' ? 'kg' : '';
+      const icon = mode === 'scenario' ? '📦' : '';
+      return `<div class="box ${cls}" style="height:${h}px"><span class="tag">${tag}</span><span style="font-size:16px">${icon}</span><span class="lbl">${v}${unit}</span></div>`;
+    }).join('');
+    const statusText = document.getElementById('sort-status-text');
+    if (f.swap.length) {
+      statusText.textContent = mode === 'scenario'
+        ? `Swapping package ${f.arr[f.swap[1]]}kg ahead of ${f.arr[f.swap[0]]}kg on the belt`
+        : `swap arr[${f.swap[0]}] ↔ arr[${f.swap[1]}]`;
+    } else if (f.hi.length) {
+      statusText.textContent = mode === 'scenario'
+        ? `Comparing package ${f.arr[f.hi[0]]}kg and ${f.arr[f.hi[1]]}kg`
+        : `compare arr[${f.hi[0]}] and arr[${f.hi[1]}]`;
+    } else if (f.done.length === f.arr.length) {
+      statusText.textContent = mode === 'scenario' ? 'Truck loaded — lightest to heaviest ✅' : 'sorted!';
+    } else {
+      statusText.textContent = mode === 'scenario' ? 'Conveyor ready to run' : 'ready';
+    }
+  };
+
+  player = { frames, idx: 0, timer: null, speed: 650, render };
+  render(frames[0]);
+}
+
+/* =========================================================================
+   DEMO: BINARY SEARCH  (dictionary lookup)
+   ========================================================================= */
+function initSearch() {
+  const words = ['ant','bark','crane','dune','ember','flint','grove','husk','ivory','jolt','kite','lumen','mint','nudge','opal','quartz'];
+  const targetIdx = 12; // "mint"
+  const frames = [];
+  let lo = 0, hi = words.length - 1;
+  frames.push({ lo, hi, mid: -1, found: -1 });
+  while (lo <= hi) {
+    const mid = Math.floor((lo + hi) / 2);
+    frames.push({ lo, hi, mid, found: -1 });
+    if (mid === targetIdx) { frames.push({ lo, hi, mid, found: mid }); break; }
+    else if (words[mid] < words[targetIdx]) lo = mid + 1;
+    else hi = mid - 1;
+    frames.push({ lo, hi, mid: -1, found: -1 });
+  }
+
+  const body = document.getElementById('canvas-body');
+  body.innerHTML = `
+    <div style="font-size:12px;color:var(--text-secondary);margin-bottom:2px;">
+      ${mode === 'scenario' ? 'Looking up: <strong style="color:var(--text)">mint</strong>' : 'Target value: <strong style="color:var(--text)">mint (index 12)</strong>'}
+    </div>
+    <div class="search-row" id="search-row"></div>
+    <div class="status-line" id="search-status"><span class="dot"></span><span id="search-status-text">Ready</span></div>`;
+  const row = document.getElementById('search-row');
+
+  const render = (f) => {
+    row.innerHTML = words.map((w, i) => {
+      const inRange = i >= f.lo && i <= f.hi;
+      let cls = 'page' + (inRange ? ' active-range' : '');
+      if (i === f.mid) cls += ' mid';
+      if (i === f.found) cls += ' found';
+      const tag = i === f.mid ? (mode === 'scenario' ? '🔍' : '') : (i === f.found ? '✅' : '');
+      return `<div class="${cls}"><span class="tag">${tag}</span><span class="word">${w}</span><span class="idx">pg ${i}</span></div>`;
+    }).join('');
+    const t = document.getElementById('search-status-text');
+    if (f.found >= 0) t.textContent = mode === 'scenario' ? 'Found "mint" — flip closed 📖' : `found at index ${f.found}`;
+    else if (f.mid >= 0) t.textContent = mode === 'scenario' ? `Flipping to page ${f.mid}: "${words[f.mid]}"` : `check mid = index ${f.mid} ("${words[f.mid]}")`;
+    else t.textContent = mode === 'scenario' ? 'Narrowing remaining pages…' : `range narrowed to [${f.lo}, ${f.hi}]`;
+  };
+
+  player = { frames, idx: 0, timer: null, speed: 750, render };
+  render(frames[0]);
+}
+
+/* =========================================================================
+   DEMO: GRAPH (Dijkstra-style shortest path — GPS)
+   ========================================================================= */
+function initGraph() {
+  // small weighted graph: cities laid out on a fixed grid
+  const nodes = {
+    Home:   { x: 60,  y: 170, label: mode === 'scenario' ? '🏠 Home' : 'A' },
+    B:      { x: 220, y: 60,  label: 'B' },
+    C:      { x: 220, y: 280, label: 'C' },
+    D:      { x: 400, y: 60,  label: 'D' },
+    E:      { x: 400, y: 280, label: 'E' },
+    Work:   { x: 560, y: 170, label: mode === 'scenario' ? '🏢 Work' : 'F' },
+  };
+  const edges = [
+    ['Home','B',7], ['Home','C',9], ['B','D',6], ['C','E',4],
+    ['B','E',11], ['D','Work',5], ['E','Work',8], ['C','D',2],
+  ];
+  const adj = {}; Object.keys(nodes).forEach(k => adj[k] = []);
+  edges.forEach(([a,b,w]) => { adj[a].push([b,w]); adj[b].push([a,w]); });
+
+  // Dijkstra with step recording
+  const dist = {}; Object.keys(nodes).forEach(k => dist[k] = Infinity);
+  dist['Home'] = 0;
+  const visited = new Set();
+  const prev = {};
+  const frames = [{ dist: {...dist}, visiting: null, visited: [], path: [] }];
+
+  while (visited.size < Object.keys(nodes).length) {
+    let u = null, best = Infinity;
+    for (const k of Object.keys(nodes)) if (!visited.has(k) && dist[k] < best) { best = dist[k]; u = k; }
+    if (u === null) break;
+    frames.push({ dist: {...dist}, visiting: u, visited: [...visited], path: [] });
+    visited.add(u);
+    for (const [v, w] of adj[u]) {
+      if (dist[u] + w < dist[v]) {
+        dist[v] = dist[u] + w;
+        prev[v] = u;
+      }
+    }
+    frames.push({ dist: {...dist}, visiting: null, visited: [...visited], path: [] });
+  }
+  // reconstruct path Home -> Work
+  let path = []; let cur = 'Work';
+  while (cur !== undefined) { path.unshift(cur); cur = prev[cur]; }
+  frames.push({ dist: {...dist}, visiting: null, visited: [...visited], path });
+
+  const body = document.getElementById('canvas-body');
+  body.innerHTML = `<div id="graph-svg-wrap"></div><div class="status-line" id="graph-status"><span class="dot"></span><span id="graph-status-text">Ready</span></div>`;
+
+  const edgeInPath = (a,b,path) => {
+    for (let i=0;i<path.length-1;i++) if ((path[i]===a&&path[i+1]===b)||(path[i]===b&&path[i+1]===a)) return true;
+    return false;
+  };
+
+  const render = (f) => {
+    const pathSet = new Set(f.path);
+    const edgeSvg = edges.map(([a,b,w]) => {
+      const n1 = nodes[a], n2 = nodes[b];
+      let cls = 'g-edge';
+      if (f.path.length && edgeInPath(a,b,f.path)) cls += ' path';
+      else if (f.visited.includes(a) && f.visited.includes(b)) cls += ' visited';
+      const mx = (n1.x+n2.x)/2, my=(n1.y+n2.y)/2;
+      const wLabel = mode === 'scenario' ? `${w} min` : w;
+      return `<line class="${cls}" x1="${n1.x}" y1="${n1.y}" x2="${n2.x}" y2="${n2.y}" />
+              <rect x="${mx-16}" y="${my-9}" width="32" height="15" rx="3" fill="var(--surface)" opacity="0.9"/>
+              <text class="g-edge-label" x="${mx}" y="${my+3}" text-anchor="middle">${wLabel}</text>`;
+    }).join('');
+    const nodeSvg = Object.entries(nodes).map(([k,n]) => {
+      let cls = 'g-node';
+      if (pathSet.has(k)) cls += ' path';
+      else if (f.visiting === k) cls += ' visiting';
+      else if (f.visited.includes(k)) cls += ' visited';
+      const d = f.dist[k] === Infinity ? '∞' : f.dist[k] + (mode==='scenario' ? 'm' : '');
+      return `<g class="${cls}">
+        <circle cx="${n.x}" cy="${n.y}" r="24"/>
+        <text class="lbl" x="${n.x}" y="${n.y+5}">${n.label}</text>
+        <text class="dist" x="${n.x}" y="${n.y+38}">${d}</text>
+      </g>`;
+    }).join('');
+    document.getElementById('graph-svg-wrap').innerHTML = `<svg class="graph-svg" viewBox="0 0 620 340" width="100%" height="300">${edgeSvg}${nodeSvg}</svg>`;
+    const t = document.getElementById('graph-status-text');
+    if (f.path.length) t.textContent = mode === 'scenario' ? `Fastest route locked in: ${f.path.map(k=>nodes[k].label.replace(/^[^ ]+ /,'')).join(' → ')}` : `shortest path: ${f.path.join(' → ')}`;
+    else if (f.visiting) t.textContent = mode === 'scenario' ? `Checking roads out of ${nodes[f.visiting].label}` : `visiting node ${f.visiting}`;
+    else t.textContent = mode === 'scenario' ? 'Scanning road network…' : 'relaxing edges…';
+  };
+
+  player = { frames, idx: 0, timer: null, speed: 850, render };
+  render(frames[0]);
+}
+
+/* =========================================================================
+   DEMO: KNAPSACK (packing a suitcase)
+   ========================================================================= */
+function initKnapsack() {
+  const items = [
+    { name: 'Camera', ab: 'Item A', ic: '📷', w: 4, v: 9 },
+    { name: 'Tent',   ab: 'Item B', ic: '⛺', w: 6, v: 7 },
+    { name: 'Laptop', ab: 'Item C', ic: '💻', w: 3, v: 8 },
+    { name: 'Boots',  ab: 'Item D', ic: '🥾', w: 2, v: 4 },
+    { name: 'Books',  ab: 'Item E', ic: '📚', w: 5, v: 3 },
+  ];
+  const CAP = 10;
+  const n = items.length;
+  const dp = Array.from({length:n+1},()=>Array(CAP+1).fill(0));
+  const frames = [];
+  for (let i=1;i<=n;i++){
+    for (let w=0; w<=CAP; w++){
+      frames.push({ i, w, phase:'consider', chosen: [] });
+      if (items[i-1].w <= w) {
+        dp[i][w] = Math.max(dp[i-1][w], dp[i-1][w-items[i-1].w] + items[i-1].v);
+      } else {
+        dp[i][w] = dp[i-1][w];
+      }
+    }
+  }
+  // backtrack chosen items
+  let w = CAP; const chosen = [];
+  for (let i=n; i>0; i--) {
+    if (dp[i][w] !== dp[i-1][w]) { chosen.push(i-1); w -= items[i-1].w; }
+  }
+  frames.push({ i:n, w:CAP, phase:'done', chosen: chosen.reverse() });
+
+  const body = document.getElementById('canvas-body');
+  body.innerHTML = `<div class="pack-wrap">
+    <div class="pack-items" id="pack-items"></div>
+    <div class="suitcase" id="suitcase">
+      <div class="cap" id="suitcase-cap">0 / ${CAP} ${mode==='scenario'?'kg':'cap'}</div>
+      <div class="bar-bg"><div class="bar-fill" id="suitcase-fill" style="width:0%"></div></div>
+    </div>
+  </div>
+  <div class="status-line" id="pack-status"><span class="dot"></span><span id="pack-status-text">Ready</span></div>`;
+
+  const render = (f) => {
+    const chosenSet = new Set(f.phase === 'done' ? f.chosen : []);
+    const consideringIdx = f.phase === 'consider' ? f.i - 1 : -1;
+    document.getElementById('pack-items').innerHTML = items.map((it, idx) => {
+      let cls = '';
+      if (chosenSet.has(idx)) cls = 'chosen';
+      else if (idx === consideringIdx) cls = 'considering';
+      else if (f.phase === 'done') cls = 'rejected';
+      const nm = mode === 'scenario' ? `${it.ic} ${it.name}` : `${it.ic} ${it.ab}`;
+      const meta = mode === 'scenario' ? `${it.w}kg · value ${it.v}` : `weight ${it.w} · value ${it.v}`;
+      return `<div class="pack-item ${cls}"><span class="ic"></span><div class="meta"><span class="n">${nm}</span><span class="m">${meta}</span></div></div>`;
+    }).join('');
+    const used = f.phase === 'done' ? f.chosen.reduce((s,idx)=>s+items[idx].w,0) : Math.min(f.w, CAP);
+    document.getElementById('suitcase-cap').textContent = `${used} / ${CAP} ${mode==='scenario'?'kg':'cap'}`;
+    document.getElementById('suitcase-fill').style.width = Math.round((used/CAP)*100) + '%';
+    const t = document.getElementById('pack-status-text');
+    if (f.phase === 'done') t.textContent = mode === 'scenario' ? 'Suitcase packed for maximum value ✅' : `optimal value: ${dp[n][CAP]}`;
+    else t.textContent = mode === 'scenario' ? `Deciding: does "${items[f.i-1].name}" beat what's already in for ${f.w}kg of space?` : `dp[${f.i}][${f.w}] considering item ${f.i-1}`;
+  };
+
+  player = { frames, idx: 0, timer: null, speed: 45, render };
+  render(frames[0]);
+}
+
+/* =========================================================================
+   DEMO: LINKED LIST reversal (train)
+   ========================================================================= */
+function initList() {
+  const values = ['12','07','45','30','88'];
+  const n = values.length;
+  // frames: at step k, arrows for indices < k point backward (reversed), current index highlighted
+  const frames = [];
+  for (let k = 0; k <= n; k++) {
+    frames.push({ flipped: k, active: k < n ? k : -1, done: k === n });
+  }
+  const body = document.getElementById('canvas-body');
+  body.innerHTML = `<div class="train-row" id="train-row"></div><div class="status-line" id="train-status"><span class="dot"></span><span id="train-status-text">Ready</span></div>`;
+  const row = document.getElementById('train-row');
+
+  const render = (f) => {
+    let html = '';
+    values.forEach((v, i) => {
+      const isActive = i === f.active;
+      const isFlipped = i < f.flipped;
+      html += `<div class="car ${isActive ? 'active':''} ${f.done ? 'done':''}">${mode==='scenario' ? '🚃' : ''} ${v}</div>`;
+      if (i < n - 1) {
+        html += `<span class="arrow ${isFlipped ? 'flipped':''}">➜</span>`;
+      }
+    });
+    row.innerHTML = html;
+    const t = document.getElementById('train-status-text');
+    if (f.done) t.textContent = mode === 'scenario' ? 'Train fully turned around 🚂' : 'list reversed';
+    else t.textContent = mode === 'scenario' ? `Flipping coupling at car ${f.active + 1}` : `reversing pointer at node ${f.active}`;
+  };
+
+  player = { frames, idx: 0, timer: null, speed: 700, render };
+  render(frames[0]);
+}
+
+/* =========================================================================
+   DEMO: TREE (BST insert — filing cabinet)
+   ========================================================================= */
+function initTree() {
+  const insertSeq = [50, 30, 70, 20, 40, 65, 80];
+  // build frames: each frame shows tree state + which node is being compared
+  class Node { constructor(v,x,y){this.v=v;this.x=x;this.y=y;this.left=null;this.right=null;} }
+  let root = null;
+  const frames = [];
+  const positions = {}; // track x,y per value once placed for stable layout
+
+  function insert(val, depth, x, y, path) {
+    if (root === null) { root = new Node(val, 300, 40); positions[val] = {x:300,y:40}; frames.push({ tree: cloneTree(root), comparing: val, placed: null }); frames.push({ tree: cloneTree(root), comparing: null, placed: val }); return; }
+    let node = root; let curX = 300, curY = 40, spread = 150;
+    while (true) {
+      frames.push({ tree: cloneTree(root), comparing: val, at: node.v, placed: null });
+      if (val < node.v) {
+        if (node.left === null) { curX -= spread; curY += 70; node.left = new Node(val, curX, curY); positions[val]={x:curX,y:curY}; frames.push({ tree: cloneTree(root), comparing: null, placed: val }); break; }
+        node = node.left; curX -= spread; curY += 70; spread = spread/1.7;
+      } else {
+        if (node.right === null) { curX += spread; curY += 70; node.right = new Node(val, curX, curY); positions[val]={x:curX,y:curY}; frames.push({ tree: cloneTree(root), comparing: null, placed: val }); break; }
+        node = node.right; curX += spread; curY += 70; spread = spread/1.7;
+      }
+    }
+  }
+  function cloneTree(node) {
+    if (!node) return null;
+    return { v: node.v, x: node.x, y: node.y, left: cloneTree(node.left), right: cloneTree(node.right) };
+  }
+  insertSeq.forEach(v => insert(v, 0, 300, 40, []));
+  frames.push({ tree: cloneTree(root), comparing: null, placed: null, final: true });
+
+  const body = document.getElementById('canvas-body');
+  body.innerHTML = `<div id="tree-svg-wrap"></div><div class="status-line" id="tree-status"><span class="dot"></span><span id="tree-status-text">Ready</span></div>`;
+
+  function drawEdges(node, out) {
+    if (!node) return;
+    if (node.left) { out.push(`<line class="t-edge" x1="${node.x}" y1="${node.y}" x2="${node.left.x}" y2="${node.left.y}"/>`); drawEdges(node.left, out); }
+    if (node.right) { out.push(`<line class="t-edge" x1="${node.x}" y1="${node.y}" x2="${node.right.x}" y2="${node.right.y}"/>`); drawEdges(node.right, out); }
+  }
+  function drawNodes(node, f, out) {
+    if (!node) return;
+    let cls = 't-node';
+    if (f.comparing !== null && f.at === node.v) cls += ' compare';
+    if (f.placed === node.v) cls += ' placed';
+    const label = mode === 'scenario' ? `#${node.v}` : node.v;
+    out.push(`<g class="${cls}"><circle cx="${node.x}" cy="${node.y}" r="22"/><text x="${node.x}" y="${node.y+5}">${label}</text></g>`);
+    drawNodes(node.left, f, out);
+    drawNodes(node.right, f, out);
+  }
+
+  const render = (f) => {
+    const edgeOut = []; drawEdges(f.tree, edgeOut);
+    const nodeOut = []; drawNodes(f.tree, f, nodeOut);
+    document.getElementById('tree-svg-wrap').innerHTML = `<svg class="tree-svg" viewBox="0 0 600 300" width="100%" height="280">${edgeOut.join('')}${nodeOut.join('')}</svg>`;
+    const t = document.getElementById('tree-status-text');
+    if (f.final) t.textContent = mode === 'scenario' ? 'All documents filed ✅' : 'BST built';
+    else if (f.placed !== null) t.textContent = mode === 'scenario' ? `Filed document #${f.placed}` : `placed node ${f.placed}`;
+    else if (f.comparing !== null) t.textContent = mode === 'scenario' ? `Comparing #${f.comparing} to folder #${f.at}` : `comparing ${f.comparing} vs node ${f.at}`;
+    else t.textContent = 'ready';
+  };
+
+  player = { frames, idx: 0, timer: null, speed: 750, render };
+  render(frames[0]);
+}
+
+/* =========================================================================
+   INIT
+   ========================================================================= */
+buildSidebar();
+selectAlgo('Graphs', 'A* Search');
+</script>
+</body>
+</html>

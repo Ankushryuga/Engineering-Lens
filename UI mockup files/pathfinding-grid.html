@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Delivery Route Finder — Pathfinding Playground</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0A0A0B; --surface: #121214; --surface-2: #18181B; --surface-3: #1F1F23;
+    --border: #26262A; --border-strong: #3A3A40;
+    --text: #E4E4E7; --text-secondary: #8C8C94; --text-muted: #57575E;
+    --accent: #5C7CFA; --accent-dim: #171B2E; --accent-soft: #8FA6FA;
+    --swap: #D97757; --swap-dim: #2A1C15;
+    --done: #5FA88A; --done-dim: #132420;
+    --warn: #E0B84B;
+    --sans: 'IBM Plex Sans', sans-serif; --mono: 'IBM Plex Mono', monospace;
+  }
+  * , *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body { background: var(--bg); color: var(--text); font-family: var(--sans); font-size: 14px; -webkit-font-smoothing: antialiased; }
+  button, select { font-family: var(--sans); cursor: pointer; }
+
+  .app { display: flex; flex-direction: column; height: 100vh; }
+
+  header { padding: 16px 24px 10px; border-bottom: 1px solid var(--border); background: var(--surface); flex-shrink:0; }
+  .h-top { display:flex; align-items:center; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
+  .brand { display:flex; align-items:center; gap:10px; }
+  .brand .mark { width:30px;height:30px;border-radius:8px;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:16px;}
+  .brand h1 { font-size:16px; font-weight:600; }
+  .brand .tag { font-size:12px; color:var(--text-muted); }
+
+  .scenario-switch { display:flex; background:var(--surface-2); border:1px solid var(--border); border-radius:8px; padding:3px; }
+  .scenario-switch button { border:none; background:transparent; color:var(--text-secondary); font-size:12px; font-weight:500; padding:6px 12px; border-radius:6px; }
+  .scenario-switch button.active { background:var(--accent); color:#fff; }
+
+  .story {
+    margin-top: 12px; font-size: 12.5px; color: var(--text-secondary); max-width: 900px; line-height:1.55;
+  }
+  .story strong { color: var(--text); }
+
+  /* ---------- Toolbar ---------- */
+  .toolbar {
+    display:flex; align-items:center; gap:10px; padding: 12px 24px; border-bottom:1px solid var(--border);
+    background: var(--surface); flex-wrap: wrap; flex-shrink:0;
+  }
+  .tb-group { display:flex; align-items:center; gap:6px; background:var(--surface-2); border:1px solid var(--border); border-radius:8px; padding:4px; }
+  .tb-group label { font-size:11px; color:var(--text-muted); padding-left:6px; }
+  select {
+    background: var(--surface-3); color:var(--text); border:1px solid var(--border-strong);
+    border-radius:6px; padding:6px 8px; font-size:12.5px;
+  }
+  .btn {
+    display:flex; align-items:center; gap:6px; background:var(--surface-3); border:1px solid var(--border-strong);
+    color:var(--text); border-radius:7px; padding:7px 13px; font-size:12.5px; font-weight:500;
+  }
+  .btn:hover { border-color: var(--accent); color: var(--accent-soft); }
+  .btn.primary { background: var(--accent); border-color:var(--accent); color:#fff; }
+  .btn.primary:hover { background: var(--accent-soft); color:#0A0A0B; }
+  .btn.ghost { background:transparent; }
+  .tool-btn { background:var(--surface-3); border:1px solid var(--border-strong); color:var(--text-secondary); border-radius:6px; padding:6px 10px; font-size:12px; }
+  .tool-btn.active { border-color: var(--accent); color: var(--accent-soft); background: var(--accent-dim); }
+  .spacer { flex:1; }
+  .speed-wrap { display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); }
+  input[type="range"] { width: 80px; accent-color: var(--accent); }
+
+  /* ---------- Stats strip ---------- */
+  .stats { display:flex; gap:22px; padding: 10px 24px; border-bottom:1px solid var(--border); background: var(--surface-2); flex-shrink:0; flex-wrap:wrap; }
+  .stat { display:flex; flex-direction:column; gap:2px; }
+  .stat .v { font-family: var(--mono); font-size: 17px; font-weight:600; }
+  .stat .l { font-size: 10.5px; color: var(--text-muted); text-transform:uppercase; letter-spacing:.04em; }
+  .stat.route .v { color: var(--done); }
+  .stat.explored .v { color: var(--accent-soft); }
+  .legend { margin-left:auto; display:flex; gap:14px; align-items:center; flex-wrap:wrap; }
+  .leg-item { display:flex; align-items:center; gap:6px; font-size:11.5px; color:var(--text-secondary); }
+  .leg-swatch { width:13px; height:13px; border-radius:3px; }
+
+  /* ---------- Grid stage ---------- */
+  .stage { flex:1; overflow:auto; display:flex; align-items:center; justify-content:center; padding: 20px; }
+  #grid {
+    display: grid; gap: 2px; background: var(--border); padding: 2px; border-radius: 8px;
+    border: 1px solid var(--border-strong); user-select:none;
+  }
+  .cell {
+    width: 30px; height: 30px; background: var(--surface); position: relative;
+    display:flex; align-items:center; justify-content:center; font-size:14px;
+    transition: background .12s ease;
+  }
+  .cell.t1 { background: #17181A; }
+  .cell.t2 { background: #1C1C1E; }
+  .cell.t3 { background: #232326; }
+  .cell.t4 { background: #2B2A24; }
+  .cell.t5 { background: #332C1D; }
+  .cell.wall { background: var(--surface-3); border: 1px solid var(--border-strong); }
+  .cell.wall::after { content:'🏢'; font-size:14px; opacity:.85; }
+  .cell.start { background: var(--accent-dim); }
+  .cell.start::after { content:'🏭'; font-size:16px; }
+  .cell.end { background: var(--done-dim); }
+  .cell.end::after { content:'📍'; font-size:16px; }
+  .cell.visited:not(.start):not(.end) { background: var(--accent-dim); }
+  .cell.visited:not(.start):not(.end)::before {
+    content:''; position:absolute; inset:3px; border-radius:3px; background: var(--accent); opacity:.28;
+  }
+  .cell.frontier:not(.start):not(.end) { background: var(--accent-dim); }
+  .cell.frontier:not(.start):not(.end)::before {
+    content:''; position:absolute; inset:2px; border-radius:3px; background: var(--accent); opacity:.85;
+  }
+  .cell.path:not(.start):not(.end) { background: var(--done-dim); }
+  .cell.path:not(.start):not(.end)::before {
+    content:''; position:absolute; inset:5px; border-radius:3px; background: var(--done);
+  }
+  .cell.draggable-target { cursor: grab; }
+
+  .status-bar {
+    display:flex; align-items:center; gap:8px; padding: 10px 24px; border-top:1px solid var(--border);
+    background: var(--surface); font-family: var(--mono); font-size:12px; color:var(--text-secondary); flex-shrink:0;
+  }
+  .status-bar .dot { width:7px; height:7px; border-radius:50%; background: var(--accent); flex-shrink:0; }
+  .hint { color: var(--text-muted); margin-left:auto; font-family: var(--sans); font-size: 11.5px; }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="h-top">
+      <div class="brand">
+        <div class="mark">🗺️</div>
+        <div>
+          <h1 id="page-title">Delivery Route Finder</h1>
+          <div class="tag" id="page-tag">Same grid pathfinding underneath — try both lenses</div>
+        </div>
+      </div>
+      <div class="scenario-switch">
+        <button id="mode-real" class="active" onclick="setMode('real')">🌍 City Delivery</button>
+        <button id="mode-abstract" onclick="setMode('abstract')">🔷 Abstract Grid</button>
+      </div>
+    </div>
+    <div class="story" id="story"></div>
+  </header>
+
+  <div class="toolbar">
+    <div class="tb-group">
+      <label>Algorithm</label>
+      <select id="algo-select">
+        <option value="bfs">BFS — fewest blocks</option>
+        <option value="dijkstra" selected>Dijkstra — fastest w/ traffic</option>
+        <option value="astar">A* — fastest, goal-directed</option>
+      </select>
+    </div>
+    <button class="btn primary" id="run-btn" onclick="runAlgorithm()">▶ Find Route</button>
+    <button class="btn ghost" onclick="clearPath()">Clear Path</button>
+    <div class="tb-group">
+      <button class="tool-btn active" id="tool-wall" onclick="setTool('wall')">🏢 Draw Buildings</button>
+      <button class="tool-btn" id="tool-erase" onclick="setTool('erase')">⌫ Erase</button>
+    </div>
+    <button class="btn ghost" onclick="generateCity()">🎲 New City Layout</button>
+    <button class="btn ghost" onclick="resetGrid()">↺ Reset Grid</button>
+    <div class="spacer"></div>
+    <div class="speed-wrap">
+      <span>Speed</span>
+      <input type="range" id="speed" min="4" max="60" value="26">
+    </div>
+  </div>
+
+  <div class="stats">
+    <div class="stat route"><span class="v" id="stat-route">–</span><span class="l" id="stat-route-label">Route length</span></div>
+    <div class="stat explored"><span class="v" id="stat-explored">–</span><span class="l" id="stat-explored-label">Blocks scanned</span></div>
+    <div class="stat"><span class="v" id="stat-algo">Dijkstra</span><span class="l">Algorithm</span></div>
+    <div class="legend">
+      <div class="leg-item"><span class="leg-swatch" style="background:var(--surface-3);border:1px solid var(--border-strong)"></span>Building</div>
+      <div class="leg-item"><span class="leg-swatch" style="background:#332C1D"></span>Heavy traffic</div>
+      <div class="leg-item"><span class="leg-swatch" style="background:var(--accent)"></span>Scanned</div>
+      <div class="leg-item"><span class="leg-swatch" style="background:var(--done)"></span>Route</div>
+    </div>
+  </div>
+
+  <div class="stage"><div id="grid"></div></div>
+
+  <div class="status-bar">
+    <span class="dot"></span><span id="status-text">Draw some buildings, then click "Find Route".</span>
+    <span class="hint" id="hint-text">Drag 🏭 or 📍 to move them · click+drag on empty streets to add/remove buildings</span>
+  </div>
+</div>
+
+<script>
+/* ================= CONFIG ================= */
+const ROWS = 15, COLS = 26;
+let mode = 'real';
+let tool = 'wall';
+let grid = []; // {wall:bool, weight:1-5}
+let start = { r: 7, c: 2 };
+let end = { r: 7, c: 23 };
+let dragging = null; // 'start' | 'end' | null
+let isPainting = false;
+let paintValue = true; // when painting walls: true=add wall, false=remove
+let animTimer = null;
+let running = false;
+
+const STORIES = {
+  real: `A delivery hub (🏭) needs the fastest way to a customer (📍) across city blocks. Some streets are wide open, others are clogged with <strong>traffic</strong> (darker blocks cost more time to cross), and some blocks are fully built over (🏢, impassable). Draw the city, then compare how each algorithm plans the trip.`,
+  abstract: `Same problem, no story attached: a start node and end node on a weighted grid graph. Grey cells are impassable nodes, shaded cells carry a higher edge weight, and the algorithm finds the minimum-cost path from start to end.`
+};
+
+function setMode(m) {
+  mode = m;
+  document.getElementById('mode-real').classList.toggle('active', m === 'real');
+  document.getElementById('mode-abstract').classList.toggle('active', m === 'abstract');
+  document.getElementById('page-title').textContent = m === 'real' ? 'Delivery Route Finder' : 'Weighted Grid Pathfinder';
+  document.getElementById('page-tag').textContent = m === 'real' ? 'Same grid pathfinding underneath — try both lenses' : 'Abstract view of the identical algorithm trace';
+  document.getElementById('story').innerHTML = STORIES[m];
+  document.getElementById('stat-route-label').textContent = m === 'real' ? 'Route length' : 'Path length';
+  document.getElementById('stat-explored-label').textContent = m === 'real' ? 'Blocks scanned' : 'Nodes visited';
+  renderGrid();
+}
+
+/* ================= GRID INIT ================= */
+function makeEmptyGrid() {
+  const g = [];
+  for (let r = 0; r < ROWS; r++) {
+    const row = [];
+    for (let c = 0; c < COLS; c++) row.push({ wall: false, weight: 1 });
+    g.push(row);
+  }
+  return g;
+}
+
+function resetGrid() {
+  stopAnim();
+  grid = makeEmptyGrid();
+  start = { r: 7, c: 2 };
+  end = { r: 7, c: 23 };
+  clearPath();
+  buildGridDOM();
+  setStatus('Grid reset. Draw some buildings, then click "Find Route".');
+}
+
+function generateCity() {
+  stopAnim();
+  grid = makeEmptyGrid();
+  // scatter building clusters
+  const clusters = 9;
+  for (let k = 0; k < clusters; k++) {
+    const cr = 1 + Math.floor(Math.random() * (ROWS - 2));
+    const cc = 1 + Math.floor(Math.random() * (COLS - 2));
+    const w = 2 + Math.floor(Math.random() * 3);
+    const h = 1 + Math.floor(Math.random() * 2);
+    for (let r = cr; r < Math.min(ROWS - 1, cr + h); r++) {
+      for (let c = cc; c < Math.min(COLS - 1, cc + w); c++) {
+        if (Math.random() < 0.85) grid[r][c].wall = true;
+      }
+    }
+  }
+  // traffic patches
+  for (let k = 0; k < 6; k++) {
+    const cr = Math.floor(Math.random() * ROWS);
+    const cc = Math.floor(Math.random() * COLS);
+    const rad = 2 + Math.floor(Math.random() * 2);
+    const w = 2 + Math.floor(Math.random() * 4);
+    for (let r = Math.max(0, cr - rad); r < Math.min(ROWS, cr + rad); r++) {
+      for (let c = Math.max(0, cc - rad); c < Math.min(COLS, cc + rad); c++) {
+        if (!grid[r][c].wall) grid[r][c].weight = w;
+      }
+    }
+  }
+  grid[start.r][start.c].wall = false;
+  grid[end.r][end.c].wall = false;
+  if (!isSolvable()) { generateCity(); return; }
+  clearPath();
+  buildGridDOM();
+  setStatus('New city generated. Click "Find Route" to compare algorithms.');
+}
+
+function isSolvable() {
+  const seen = Array.from({length:ROWS},()=>Array(COLS).fill(false));
+  const q = [[start.r,start.c]]; seen[start.r][start.c]=true;
+  while(q.length){
+    const [r,c] = q.shift();
+    if (r===end.r && c===end.c) return true;
+    for (const [dr,dc] of [[0,1],[0,-1],[1,0],[-1,0]]) {
+      const nr=r+dr, nc=c+dc;
+      if (nr>=0&&nr<ROWS&&nc>=0&&nc<COLS&&!seen[nr][nc]&&!grid[nr][nc].wall){ seen[nr][nc]=true; q.push([nr,nc]); }
+    }
+  }
+  return false;
+}
+
+/* ================= DOM ================= */
+function buildGridDOM() {
+  const el = document.getElementById('grid');
+  el.style.gridTemplateColumns = `repeat(${COLS}, 30px)`;
+  el.innerHTML = '';
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      const d = document.createElement('div');
+      d.className = 'cell';
+      d.dataset.r = r; d.dataset.c = c;
+      d.addEventListener('mousedown', onCellDown);
+      d.addEventListener('mouseenter', onCellEnter);
+      el.appendChild(d);
+    }
+  }
+  document.addEventListener('mouseup', () => { isPainting = false; dragging = null; });
+  renderGrid();
+}
+
+function cellEl(r,c){ return document.querySelector(`.cell[data-r="${r}"][data-c="${c}"]`); }
+
+function renderGrid() {
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      const d = cellEl(r,c);
+      if (!d) continue;
+      const cell = grid[r][c];
+      let cls = 'cell';
+      if (r === start.r && c === start.c) cls += ' start draggable-target';
+      else if (r === end.r && c === end.c) cls += ' end draggable-target';
+      else if (cell.wall) cls += ' wall';
+      else if (mode === 'real' && cell.weight >= 4) cls += ' t5';
+      else if (mode === 'real' && cell.weight === 3) cls += ' t4';
+      else if (mode === 'real' && cell.weight === 2) cls += ' t3';
+      d.className = cls;
+    }
+  }
+}
+
+/* ================= INTERACTION ================= */
+function setTool(t) {
+  tool = t;
+  document.getElementById('tool-wall').classList.toggle('active', t === 'wall');
+  document.getElementById('tool-erase').classList.toggle('active', t === 'erase');
+}
+
+function onCellDown(e) {
+  if (running) return;
+  const r = Number(e.currentTarget.dataset.r), c = Number(e.currentTarget.dataset.c);
+  if (r === start.r && c === start.c) { dragging = 'start'; return; }
+  if (r === end.r && c === end.c) { dragging = 'end'; return; }
+  isPainting = true;
+  paintValue = tool === 'wall';
+  grid[r][c].wall = paintValue;
+  if (!paintValue) grid[r][c].weight = 1;
+  renderGrid();
+}
+
+function onCellEnter(e) {
+  const r = Number(e.currentTarget.dataset.r), c = Number(e.currentTarget.dataset.c);
+  if (dragging === 'start' && !grid[r][c].wall) { start = { r, c }; clearPath(); renderGrid(); return; }
+  if (dragging === 'end' && !grid[r][c].wall) { end = { r, c }; clearPath(); renderGrid(); return; }
+  if (isPainting) {
+    if (r === start.r && c === start.c) return;
+    if (r === end.r && c === end.c) return;
+    grid[r][c].wall = paintValue;
+    if (!paintValue) grid[r][c].weight = 1;
+    renderGrid();
+  }
+}
+
+function setStatus(t) { document.getElementById('status-text').textContent = t; }
+function stopAnim() { if (animTimer) { clearInterval(animTimer); animTimer = null; } running = false; document.getElementById('run-btn').textContent = '▶ Find Route'; }
+
+function clearPath() {
+  document.querySelectorAll('.cell.visited, .cell.frontier, .cell.path').forEach(el => {
+    el.classList.remove('visited','frontier','path');
+  });
+  document.getElementById('stat-route').textContent = '–';
+  document.getElementById('stat-explored').textContent = '–';
+}
+
+/* ================= ALGORITHMS ================= */
+function neighbors(r,c) {
+  const out = [];
+  for (const [dr,dc] of [[0,1],[0,-1],[1,0],[-1,0]]) {
+    const nr=r+dr, nc=c+dc;
+    if (nr>=0&&nr<ROWS&&nc>=0&&nc<COLS&&!grid[nr][nc].wall) out.push([nr,nc]);
+  }
+  return out;
+}
+
+function runBFS() {
+  const seen = Array.from({length:ROWS},()=>Array(COLS).fill(false));
+  const prev = {};
+  const order = [];
+  const q = [[start.r,start.c]];
+  seen[start.r][start.c] = true;
+  let found = false;
+  while (q.length) {
+    const [r,c] = q.shift();
+    order.push([r,c]);
+    if (r === end.r && c === end.c) { found = true; break; }
+    for (const [nr,nc] of neighbors(r,c)) {
+      if (!seen[nr][nc]) { seen[nr][nc] = true; prev[`${nr},${nc}`] = [r,c]; q.push([nr,nc]); }
+    }
+  }
+  return { order, prev, found };
+}
+
+function runDijkstra(useHeuristic) {
+  const dist = Array.from({length:ROWS},()=>Array(COLS).fill(Infinity));
+  const seen = Array.from({length:ROWS},()=>Array(COLS).fill(false));
+  const prev = {};
+  dist[start.r][start.c] = 0;
+  const order = [];
+  const h = (r,c) => useHeuristic ? Math.abs(r-end.r) + Math.abs(c-end.c) : 0;
+  // simple priority queue via array (grid is small, fine perf-wise)
+  const pq = [[h(start.r,start.c), start.r, start.c]];
+  let found = false;
+  while (pq.length) {
+    pq.sort((a,b) => a[0]-b[0]);
+    const [, r, c] = pq.shift();
+    if (seen[r][c]) continue;
+    seen[r][c] = true;
+    order.push([r,c]);
+    if (r === end.r && c === end.c) { found = true; break; }
+    for (const [nr,nc] of neighbors(r,c)) {
+      const cost = grid[nr][nc].weight;
+      const nd = dist[r][c] + cost;
+      if (nd < dist[nr][nc]) {
+        dist[nr][nc] = nd;
+        prev[`${nr},${nc}`] = [r,c];
+        pq.push([nd + h(nr,nc), nr, nc]);
+      }
+    }
+  }
+  return { order, prev, found, dist };
+}
+
+function reconstructPath(prev) {
+  const path = [];
+  let cur = [end.r, end.c];
+  const key = ([r,c]) => `${r},${c}`;
+  while (cur) {
+    path.unshift(cur);
+    if (cur[0] === start.r && cur[1] === start.c) break;
+    cur = prev[key(cur)];
+    if (!cur) return [];
+  }
+  return path;
+}
+
+/* ================= RUN + ANIMATE ================= */
+function runAlgorithm() {
+  if (running) return;
+  stopAnim();
+  clearPath();
+  const algo = document.getElementById('algo-select').value;
+  document.getElementById('stat-algo').textContent = algo === 'bfs' ? 'BFS' : algo === 'dijkstra' ? 'Dijkstra' : 'A*';
+
+  let result;
+  if (algo === 'bfs') result = runBFS();
+  else if (algo === 'dijkstra') result = runDijkstra(false);
+  else result = runDijkstra(true);
+
+  if (!result.found) {
+    setStatus(mode === 'real' ? 'No route exists — the customer is boxed in by buildings.' : 'No path exists — end node is unreachable.');
+    return;
+  }
+
+  running = true;
+  document.getElementById('run-btn').textContent = '⏸ Running…';
+  const order = result.order;
+  const path = reconstructPath(result.prev);
+  const speedVal = Number(document.getElementById('speed').value);
+  const delay = Math.max(4, 64 - speedVal);
+
+  let i = 0;
+  setStatus(mode === 'real' ? `Scanning streets outward from the hub…` : `Visiting nodes…`);
+  animTimer = setInterval(() => {
+    if (i > 0) {
+      const [pr,pc] = order[i-1];
+      if (!(pr===start.r&&pc===start.c) && !(pr===end.r&&pc===end.c)) cellEl(pr,pc).classList.remove('frontier');
+      if (!(pr===start.r&&pc===start.c) && !(pr===end.r&&pc===end.c)) cellEl(pr,pc).classList.add('visited');
+    }
+    if (i < order.length) {
+      const [r,c] = order[i];
+      if (!(r===start.r&&c===start.c) && !(r===end.r&&c===end.c)) cellEl(r,c).classList.add('frontier');
+      document.getElementById('stat-explored').textContent = i + 1;
+      i++;
+    } else {
+      clearInterval(animTimer);
+      animatePath(path, () => {
+        running = false;
+        document.getElementById('run-btn').textContent = '▶ Find Route';
+      });
+    }
+  }, delay);
+}
+
+function animatePath(path, onDone) {
+  let cost = 0;
+  for (let k = 1; k < path.length; k++) cost += grid[path[k][0]][path[k][1]].weight;
+  let j = 0;
+  setStatus(mode === 'real' ? 'Route found — tracing the fastest path back to the hub…' : 'Path found — tracing back…');
+  const t = setInterval(() => {
+    if (j < path.length) {
+      const [r,c] = path[j];
+      if (!(r===start.r&&c===start.c) && !(r===end.r&&c===end.c)) cellEl(r,c).classList.add('path');
+      j++;
+    } else {
+      clearInterval(t);
+      document.getElementById('stat-route').textContent = (mode === 'real') ? `${cost} min` : `${path.length - 1} steps`;
+      setStatus(mode === 'real'
+        ? `Fastest route found: ${path.length - 1} blocks, ~${cost} min of travel time.`
+        : `Shortest path found: ${path.length - 1} edges, total cost ${cost}.`);
+      onDone && onDone();
+    }
+  }, 18);
+}
+
+/* ================= INIT ================= */
+grid = makeEmptyGrid();
+buildGridDOM();
+generateCity();
+setMode('real');
+</script>
+</body>
+</html>
