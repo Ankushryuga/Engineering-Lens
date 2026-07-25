@@ -1,0 +1,95 @@
+.statusbar {
+  display: flex;
+  align-items: center;
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.iconBtn {
+  background: transparent;
+  border: none;
+  border-right: 1px solid var(--border);
+  color: var(--text-secondary);
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border-radius: 0;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.iconBtn:hover:not(:disabled) {
+  color: var(--text);
+  background: var(--surface-3);
+}
+
+.iconBtn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.playBtn {
+  color: var(--accent);
+}
+
+.playBtn:hover {
+  color: var(--accent-soft) !important;
+}
+
+.scrubber {
+  flex: 1;
+  display: flex;
+  gap: 2px;
+  align-items: center;
+  height: 32px;
+  padding: 8px 8px;
+  cursor: pointer;
+  overflow: hidden;
+}
+
+.tick {
+  flex: 1;
+  height: 100%;
+  background: var(--surface-3);
+  border-radius: 1px;
+  transition: background 0.1s;
+  max-width: 12px;
+  cursor: pointer;
+}
+
+.tick.done {
+  background: var(--border-strong);
+}
+
+.tick.now {
+  background: var(--accent);
+}
+
+.counter {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 14px;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-secondary);
+  border-left: 1px solid var(--border);
+  height: 32px;
+  white-space: nowrap;
+}
+
+.speed {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 14px;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-secondary);
+  border-left: 1px solid var(--border);
+  height: 32px;
+}

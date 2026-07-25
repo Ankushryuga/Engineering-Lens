@@ -1,0 +1,225 @@
+services:
+  # ── Infrastructure ──────────────────────────────────────────────────────────
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.6.0
+    container_name: algo-zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+    healthcheck:
+      test: ["CMD", "bash", "-c", "echo ruok | nc localhost 2181"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  kafka:
+    image: confluentinc/cp-kafka:7.6.0
+    container_name: algo-kafka
+    depends_on:
+      zookeeper:
+        condition: service_healthy
+    ports:
+      # Host-side port remapped to 29094 to avoid colliding with unrelated
+      # containers on this machine that already publish 9092. Only needed
+      # for connecting to Kafka from the Windows host (e.g. running the API
+      # or a sandbox worker outside Docker); containers on the compose
+      # network always use "kafka:9092" internally, unaffected by this.
+      - "29094:29092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29094
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+    healthcheck:
+      test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9092"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+
+  redis:
+    image: redis:7.2-alpine
+    container_name: algo-redis
+    ports:
+      # Host-side port remapped to 6380 to avoid colliding with unrelated
+      # containers on this machine that already publish 6379. Containers on
+      # the compose network always use "redis:6379" internally.
+      - "6380:6379"
+    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: algo-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-algo}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-algo_secret}
+      POSTGRES_DB: ${POSTGRES_DB:-algo_visualizer}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./catalog/schema.sql:/docker-entrypoint-initdb.d/01_schema.sql
+      - ./catalog/seeds/algorithms.sql:/docker-entrypoint-initdb.d/02_seeds.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-algo} -d ${POSTGRES_DB:-algo_visualizer}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # ── API ─────────────────────────────────────────────────────────────────────
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    container_name: algo-api
+    ports:
+      - "8080:8080"
+    environment:
+      PORT: 8080
+      POSTGRES_DSN: "postgres://${POSTGRES_USER:-algo}:${POSTGRES_PASSWORD:-algo_secret}@postgres:5432/${POSTGRES_DB:-algo_visualizer}?sslmode=disable"
+      REDIS_ADDR: redis:6379
+      KAFKA_BROKERS: kafka:9092
+      KAFKA_JOBS_TOPIC: visualize-jobs
+      KAFKA_RESULTS_TOPIC: visualize-results
+      CORS_ORIGINS: "http://localhost:5173,http://localhost:3000"
+      RATE_LIMIT_RPS: "10"
+      JOB_TIMEOUT_SECONDS: "30"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ── Sandbox Workers ──────────────────────────────────────────────────────────
+  sandbox-python:
+    build:
+      context: ./sandbox/python
+      dockerfile: Dockerfile
+    container_name: algo-sandbox-python
+    environment:
+      KAFKA_BROKERS: kafka:9092
+      KAFKA_JOBS_TOPIC: visualize-jobs
+      KAFKA_RESULTS_TOPIC: visualize-results
+      KAFKA_GROUP_ID: sandbox-python
+      LANGUAGE_FILTER: python
+      MAX_EXEC_SECONDS: "10"
+      MAX_MEMORY_MB: "128"
+    depends_on:
+      kafka:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - default
+    # No internet access for sandbox
+    dns: []
+
+  sandbox-javascript:
+    build:
+      context: ./sandbox/javascript
+      dockerfile: Dockerfile
+    container_name: algo-sandbox-javascript
+    environment:
+      KAFKA_BROKERS: kafka:9092
+      KAFKA_JOBS_TOPIC: visualize-jobs
+      KAFKA_RESULTS_TOPIC: visualize-results
+      KAFKA_GROUP_ID: sandbox-javascript
+      LANGUAGE_FILTER: javascript
+      MAX_EXEC_SECONDS: "10"
+      MAX_MEMORY_MB: "128"
+    depends_on:
+      kafka:
+        condition: service_healthy
+    restart: unless-stopped
+    dns: []
+
+  sandbox-go:
+    build:
+      context: ./sandbox/golang
+      dockerfile: Dockerfile
+    container_name: algo-sandbox-go
+    environment:
+      KAFKA_BROKERS: kafka:9092
+      KAFKA_JOBS_TOPIC: visualize-jobs
+      KAFKA_RESULTS_TOPIC: visualize-results
+      KAFKA_GROUP_ID: sandbox-go
+      LANGUAGE_FILTER: go
+      MAX_EXEC_SECONDS: "20"
+      MAX_MEMORY_MB: "256"
+    depends_on:
+      kafka:
+        condition: service_healthy
+    restart: unless-stopped
+    dns: []
+
+  sandbox-java:
+    build:
+      context: ./sandbox/java
+      dockerfile: Dockerfile
+    container_name: algo-sandbox-java
+    environment:
+      KAFKA_BROKERS: kafka:9092
+      KAFKA_JOBS_TOPIC: visualize-jobs
+      KAFKA_RESULTS_TOPIC: visualize-results
+      KAFKA_GROUP_ID: sandbox-java
+      LANGUAGE_FILTER: java
+      MAX_EXEC_SECONDS: "20"
+      MAX_MEMORY_MB: "256"
+    depends_on:
+      kafka:
+        condition: service_healthy
+    restart: unless-stopped
+    dns: []
+
+  sandbox-cpp:
+    build:
+      context: ./sandbox/cpp
+      dockerfile: Dockerfile
+    container_name: algo-sandbox-cpp
+    environment:
+      KAFKA_BROKERS: kafka:9092
+      KAFKA_JOBS_TOPIC: visualize-jobs
+      KAFKA_RESULTS_TOPIC: visualize-results
+      KAFKA_GROUP_ID: sandbox-cpp
+      LANGUAGE_FILTER: cpp
+      MAX_EXEC_SECONDS: "20"
+      MAX_MEMORY_MB: "256"
+    depends_on:
+      kafka:
+        condition: service_healthy
+    restart: unless-stopped
+    dns: []
+
+  # ── Frontend (dev) ───────────────────────────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      target: dev
+    container_name: algo-frontend
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend/src:/usr/src/frontend/src
+    environment:
+      # Inside the frontend container, "localhost" refers to the container
+      # itself, not the API service — must use the Docker Compose service
+      # name "api" so the Vite dev-server proxy can actually reach it.
+      VITE_API_URL: http://api:8080
+      VITE_WS_URL: ws://api:8080
+    depends_on:
+      - api
+
+volumes:
+  postgres_data:

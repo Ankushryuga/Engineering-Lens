@@ -1,0 +1,124 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--bg);
+}
+
+.canvasWrap {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+  min-height: 0;
+  overflow: auto;
+}
+
+.svg {
+  width: 100%;
+  max-height: 100%;
+}
+
+.edge {
+  stroke: var(--border-strong);
+  stroke-width: 1.5;
+}
+
+.edgePath {
+  stroke: var(--done);
+  stroke-width: 2.5;
+}
+
+.node {
+  fill: var(--surface-3);
+  stroke: var(--border-strong);
+  stroke-width: 1.5;
+}
+
+.nodeCurrent {
+  fill: var(--swap-dim);
+  stroke: var(--swap);
+  stroke-width: 2;
+}
+
+.nodeVisited {
+  fill: var(--compare-dim);
+  stroke: var(--compare);
+  stroke-width: 1.5;
+}
+
+.nodePath {
+  fill: rgba(95, 168, 138, 0.2);
+  stroke: var(--done);
+  stroke-width: 2;
+}
+
+.nodeHighlight {
+  fill: var(--accent-dim);
+  stroke: var(--accent);
+  stroke-width: 3;
+}
+
+.rootRing {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 1.5;
+  stroke-dasharray: 3 2;
+}
+
+.nodeLabel {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  font-weight: 600;
+  fill: var(--text);
+}
+
+.legend {
+  display: flex;
+  gap: 16px;
+  padding: 8px 16px;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--text-secondary);
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+
+.legend span {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.dotRoot, .dotCurrent, .dotVisited, .dotPath {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.dotRoot { background: transparent; border: 1.5px dashed var(--accent); }
+.dotCurrent { background: var(--swap-dim); border: 1.5px solid var(--swap); }
+.dotVisited { background: var(--compare-dim); border: 1.5px solid var(--compare); }
+.dotPath { background: rgba(95, 168, 138, 0.3); border: 1.5px solid var(--done); }
+
+.status {
+  padding: 8px 16px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  font-family: var(--mono);
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-muted);
+}
