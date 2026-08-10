@@ -55,22 +55,6 @@
   cursor: not-allowed;
 }
 
-.btnSecondary {
-  background: transparent;
-  border: 1px solid var(--border-strong);
-  color: var(--text);
-  padding: 6px 12px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  border-radius: 2px;
-  cursor: pointer;
-  font-size: 12px;
-}
-
-.btnSecondary:hover {
-  background: var(--surface-2);
-}
 
 /* Spinner */
 .spinner {
@@ -116,45 +100,6 @@
   line-height: 1.6;
 }
 
-.dividerOr {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  max-width: 560px;
-  margin: 22px 0;
-  color: var(--text-muted);
-  font-family: var(--mono);
-  font-size: 10.5px;
-}
-
-.dividerOr::before,
-.dividerOr::after {
-  content: '';
-  flex: 1;
-  height: 1px;
-  background: var(--border);
-}
-
-.customHintBtn {
-  display: block;
-  text-align: left;
-  background: transparent;
-  border: 1px dashed var(--border-strong);
-  border-radius: 3px;
-  padding: 12px 16px;
-  font-family: var(--mono);
-  font-size: 11px;
-  color: var(--text-secondary);
-  max-width: 560px;
-  cursor: pointer;
-  line-height: 1.6;
-}
-
-.customHintBtn:hover {
-  color: var(--text);
-  border-color: var(--accent);
-  background: var(--surface);
-}
 
 /* Tabs */
 .tabs {
@@ -350,4 +295,34 @@
   .editorWrap {
     min-height: 240px;
   }
+}
+
+.vizModeToggle {
+  margin-left: auto;
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface-2);
+}
+
+.vizModeButton,
+.vizModeActive {
+  padding: 3px 7px;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-muted);
+  font-family: var(--sans);
+  font-size: 9.5px;
+  white-space: nowrap;
+}
+
+.vizModeButton:hover {
+  color: var(--text);
+}
+
+.vizModeActive {
+  color: var(--accent-soft);
+  background: var(--accent-dim);
 }

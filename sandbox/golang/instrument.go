@@ -53,6 +53,9 @@ func __record_compare__(i, j int, arr []int) {
 	}
 	cp := make([]int, len(arr))
 	copy(cp, arr)
+	if __prev__ == nil {
+		__prev__ = append([]int(nil), cp...)
+	}
 	__steps__ = append(__steps__, __step__{
 		Type:    "compare",
 		Indices: []int{i, j},
@@ -120,26 +123,25 @@ func instrument(code string) (string, string) {
 	lines := strings.Split(code, "\n")
 	out := make([]string, 0, len(lines)*2)
 
+	idxRe := regexp.MustCompile(regexp.QuoteMeta(subject) + `\[([^\]]+)\]`)
+	plainAssignRe := regexp.MustCompile(`(^|[^=!<>])=([^=]|$)`)
 	for _, line := range lines {
-		out = append(out, line)
-
 		if compareOpRe.MatchString(line) {
-			idxRe := regexp.MustCompile(regexp.QuoteMeta(subject) + `\[([^\]]+)\]`)
 			matches := idxRe.FindAllStringSubmatch(line, -1)
 			if len(matches) >= 2 {
 				out = append(out, fmt.Sprintf("__record_compare__((%s), (%s), %s)", matches[0][1], matches[1][1], subject))
 			}
 		}
 
-		assignRe := regexp.MustCompile(regexp.QuoteMeta(subject) + `\[[^\]]+\]\s*=[^=]`)
-		if assignRe.MatchString(line) {
+		out = append(out, line)
+		if idxRe.MatchString(line) && plainAssignRe.MatchString(line) {
 			out = append(out, fmt.Sprintf("__record_mutation__(%s)", subject))
 		}
 	}
 
 	joined := strings.Join(out, "\n")
 	// Inject defer __finalize__() as the first statement in main().
-	joined = mainFuncRe.ReplaceAllString(joined, "func main() {\n\tdefer __finalize__()")
+	joined = mainFuncRe.ReplaceAllString(joined, "func main() {\n\tdefer __finalize__()\n")
 
 	return joined, subject
 }

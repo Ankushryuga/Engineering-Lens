@@ -38,6 +38,7 @@ class Tracer:
     def __init__(self, source_lines: list[str]):
         self.source_lines = source_lines
         self.steps: list[dict[str, Any]] = []
+        self.fallback_steps: list[dict[str, Any]] = []
         self.subject_name: Optional[str] = None
         self.prev_snapshot: Optional[list] = None
         self.pending_compare_line: Optional[int] = None
@@ -111,8 +112,14 @@ class Tracer:
         if event not in ("call", "line", "return"):
             return self.trace
 
+        # Only interpret line numbers from the submitted source. Without this
+        # guard, Python-library frames can accidentally be matched against the
+        # user's source_lines and produce misleading comparison events.
+        if frame.f_code.co_filename != "<user_code>":
+            return self.trace
+
         if event == "call":
-            return self.trace  # trace into nested calls too
+            return self.trace  # trace into nested user-defined calls too
 
         if self.subject_name is None:
             found = self._find_subject_array(frame)
@@ -125,6 +132,12 @@ class Tracer:
                 return None  # stop tracing — runaway loop guard
 
             line_no = frame.f_lineno
+            # Keep a lightweight execution-progress trace in parallel. It is
+            # only returned when no structured array events were detected, so
+            # DP/string/backtracking code still has seekable progress without
+            # pretending we understood a data structure we did not observe.
+            if len(self.fallback_steps) < self.max_steps - 1:
+                self.fallback_steps.append({"type": "highlight", "line": line_no})
             # Diff against previous snapshot (mutation caused by the *previous* line)
             current_snapshot = self._snapshot(frame)
             if self.prev_snapshot is not None and current_snapshot is not None:
@@ -172,7 +185,7 @@ def run(code: str) -> list[dict[str, Any]]:
     explicit_steps: list[dict[str, Any]] = []
 
     def record_step(step: dict[str, Any]) -> None:
-        if len(explicit_steps) < 5000:
+        if len(explicit_steps) < 4999:
             explicit_steps.append(dict(step))
 
     compiled = compile(code, "<user_code>", "exec")
@@ -189,13 +202,21 @@ def run(code: str) -> list[dict[str, Any]]:
         sys.settrace(None)
 
     if explicit_steps:
+        if explicit_steps[-1].get("type") != "done":
+            explicit_steps.append({"type": "done", "info": "done"})
         return explicit_steps
 
     if not tracer.steps:
-        # Fallback: no array detected — emit a single informational step
+        tracer.steps = tracer.fallback_steps
         tracer.steps.append({
             "type": "done",
-            "info": "execution completed — no array-based state changes detected",
+            "info": "execution completed",
+        })
+    elif tracer.steps[-1].get("type") != "done":
+        tracer.steps.append({
+            "type": "done",
+            "array": tracer.prev_snapshot,
+            "info": "done",
         })
 
     return tracer.steps

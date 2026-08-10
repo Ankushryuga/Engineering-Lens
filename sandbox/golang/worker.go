@@ -21,10 +21,12 @@ type Job struct {
 	ID       string `json:"id"`
 	Code     string `json:"code"`
 	Language string `json:"language"`
+	Hash     string `json:"hash"`
 }
 
 type Result struct {
 	JobID      string  `json:"job_id"`
+	Hash       string  `json:"hash,omitempty"`
 	Steps      []Step  `json:"steps"`
 	Error      string  `json:"error,omitempty"`
 	Language   string  `json:"language"`
@@ -32,10 +34,10 @@ type Result struct {
 }
 
 type Step struct {
-	Type    string   `json:"type"`
-	Indices []int    `json:"indices,omitempty"`
-	Array   []int    `json:"array,omitempty"`
-	Info    string   `json:"info,omitempty"`
+	Type    string `json:"type"`
+	Indices []int  `json:"indices,omitempty"`
+	Array   []int  `json:"array,omitempty"`
+	Info    string `json:"info,omitempty"`
 }
 
 var (
@@ -53,7 +55,7 @@ func assembleSource(userCode string) string {
 	instrumented, subject := instrument(userCode)
 	if subject == "" {
 		// No subject slice found — still wrap so it compiles & runs, but no steps.
-		instrumented = mainFuncRe.ReplaceAllString(userCode, "func main() {\n\tdefer __finalize__()")
+		instrumented = mainFuncRe.ReplaceAllString(userCode, "func main() {\n\tdefer __finalize__()\n")
 	}
 
 	code := instrumented
@@ -206,6 +208,7 @@ func main() {
 			result = Result{Error: fmt.Sprintf("internal sandbox error: %v", err)}
 		}
 		result.JobID = job.ID
+		result.Hash = job.Hash
 		result.Language = languageFilter
 
 		data, _ := json.Marshal(result)

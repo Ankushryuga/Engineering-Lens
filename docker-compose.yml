@@ -36,10 +36,19 @@ services:
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
     healthcheck:
-      test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9092"]
+      test:
+        [
+          "CMD",
+          "kafka-broker-api-versions",
+          "--bootstrap-server",
+          "localhost:9092",
+        ]
       interval: 15s
       timeout: 10s
       retries: 10
+    networks:
+      - default
+      - sandbox
 
   redis:
     image: redis:7.2-alpine
@@ -60,7 +69,7 @@ services:
     image: postgres:16-alpine
     container_name: algo-postgres
     ports:
-      - "5432:5432"
+      - "5433:5432"
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-algo}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-algo_secret}
@@ -70,7 +79,11 @@ services:
       - ./catalog/schema.sql:/docker-entrypoint-initdb.d/01_schema.sql
       - ./catalog/seeds/algorithms.sql:/docker-entrypoint-initdb.d/02_seeds.sql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-algo} -d ${POSTGRES_DB:-algo_visualizer}"]
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER:-algo} -d ${POSTGRES_DB:-algo_visualizer}",
+        ]
       interval: 5s
       timeout: 3s
       retries: 10
@@ -120,10 +133,16 @@ services:
       kafka:
         condition: service_healthy
     restart: unless-stopped
+    mem_limit: 160m
+    cpus: "0.75"
+    pids_limit: 64
+    read_only: true
+    tmpfs:
+      - /tmp:size=128m,mode=1777
+    security_opt:
+      - no-new-privileges:true
     networks:
-      - default
-    # No internet access for sandbox
-    dns: []
+      - sandbox
 
   sandbox-javascript:
     build:
@@ -142,7 +161,16 @@ services:
       kafka:
         condition: service_healthy
     restart: unless-stopped
-    dns: []
+    mem_limit: 160m
+    cpus: "0.75"
+    pids_limit: 64
+    read_only: true
+    tmpfs:
+      - /tmp:size=128m,mode=1777
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - sandbox
 
   sandbox-go:
     build:
@@ -161,7 +189,16 @@ services:
       kafka:
         condition: service_healthy
     restart: unless-stopped
-    dns: []
+    mem_limit: 320m
+    cpus: "1.0"
+    pids_limit: 64
+    read_only: true
+    tmpfs:
+      - /tmp:size=128m,mode=1777
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - sandbox
 
   sandbox-java:
     build:
@@ -180,7 +217,16 @@ services:
       kafka:
         condition: service_healthy
     restart: unless-stopped
-    dns: []
+    mem_limit: 320m
+    cpus: "1.0"
+    pids_limit: 64
+    read_only: true
+    tmpfs:
+      - /tmp:size=128m,mode=1777
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - sandbox
 
   sandbox-cpp:
     build:
@@ -199,7 +245,16 @@ services:
       kafka:
         condition: service_healthy
     restart: unless-stopped
-    dns: []
+    mem_limit: 320m
+    cpus: "1.0"
+    pids_limit: 64
+    read_only: true
+    tmpfs:
+      - /tmp:size=128m,mode=1777
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - sandbox
 
   # ── Frontend (dev) ───────────────────────────────────────────────────────────
   frontend:
@@ -220,6 +275,10 @@ services:
       VITE_WS_URL: ws://api:8080
     depends_on:
       - api
+
+networks:
+  sandbox:
+    internal: true
 
 volumes:
   postgres_data:

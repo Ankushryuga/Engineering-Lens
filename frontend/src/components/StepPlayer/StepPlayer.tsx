@@ -95,19 +95,20 @@ export default function StepPlayer({ totalSteps, currentStep, onStepChange, auto
         </svg>
       </button>
 
-      {/* Scrubber */}
+      {/* Scrubber — one range input even for traces with thousands of steps. */}
       <div className={styles.scrubber}>
-        {Array.from({ length: totalSteps }).map((_, i) => (
-          <div
-            key={i}
-            className={
-              styles.tick +
-              (i < currentStep ? ' ' + styles.done : '') +
-              (i === currentStep ? ' ' + styles.now : '')
-            }
-            onClick={() => { setPlaying(false); onStepChange(i) }}
-          />
-        ))}
+        <input
+          className={styles.scrubberRange}
+          type="range"
+          min={0}
+          max={Math.max(totalSteps - 1, 0)}
+          value={Math.min(currentStep, Math.max(totalSteps - 1, 0))}
+          onChange={e => {
+            setPlaying(false)
+            onStepChange(Number(e.target.value))
+          }}
+          aria-label="visualization step"
+        />
       </div>
 
       {/* Step counter */}

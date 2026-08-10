@@ -18,6 +18,7 @@
   --swap-dim: #2A1C15;
   --swap-soft: #E39A7F;
   --done: #5FA88A;
+  --done-dim: #15231E;
   --sans: 'IBM Plex Sans', sans-serif;
   --mono: 'IBM Plex Mono', monospace;
 }
@@ -41,6 +42,7 @@
   --swap-dim: #FCE9DC;
   --swap-soft: #93400A;
   --done: #2F7A57;
+  --done-dim: #E4F2EB;
   --sans: 'IBM Plex Sans', sans-serif;
   --mono: 'IBM Plex Mono', monospace;
 }

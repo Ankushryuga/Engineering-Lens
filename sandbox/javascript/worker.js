@@ -111,6 +111,7 @@ async function main() {
           key: job.id,
           value: JSON.stringify({
             job_id: job.id,
+            hash: job.hash || '',
             steps: result.steps,
             error: result.error,
             language: LANGUAGE_FILTER,

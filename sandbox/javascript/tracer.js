@@ -41,32 +41,24 @@ function instrument(code, subject) {
   const compareOpRe = /[<>]=?|===?/
 
   const out = []
-  for (let lineNo = 0; lineNo < lines.length; lineNo++) {
-    const line = lines[lineNo]
-    out.push(line)
-
-    // Detect a comparison referencing two indices of the subject array
+  for (const line of lines) {
     if (compareOpRe.test(line)) {
       const indices = []
-      let m
+      let match
       idxRe.lastIndex = 0
-      while ((m = idxRe.exec(line)) !== null) {
-        indices.push(m[1])
-      }
+      while ((match = idxRe.exec(line)) !== null) indices.push(match[1])
       if (indices.length >= 2) {
-        out.push(
-          `__record_compare__(${JSON.stringify(subject)}, (${indices[0]}), (${indices[1]}), ${subject});`
-        )
+        out.push(`__record_compare__((${indices[0]}), (${indices[1]}), ${subject});`)
       }
     }
 
-    // Detect an assignment to a subject array element -> record mutation after the line
-    // (covers both `arr[i] = x` and destructuring swaps `[arr[i], arr[j]] = [arr[j], arr[i]]`)
+    out.push(line)
+
     idxRe.lastIndex = 0
     const touchesSubject = idxRe.test(line)
     const hasPlainAssign = /(?<![<>=!])=(?!=)/.test(line)
     if (touchesSubject && hasPlainAssign) {
-      out.push(`__record_mutation__(${JSON.stringify(subject)}, ${subject});`)
+      out.push(`__record_mutation__(${subject});`)
     }
   }
   return out.join('\n')
@@ -78,35 +70,43 @@ function run(code) {
   const instrumented = instrument(code, subject)
 
   let stepCount = 0
+  let previousArray = null
   const sandbox = {
     console: { log: () => {}, error: () => {} },
-    __record_compare__(name, i, j, arr) {
+    __record_compare__(i, j, arr) {
       if (stepCount++ >= MAX_STEPS) return
+      const snapshot = Array.isArray(arr) ? arr.slice() : undefined
+      if (snapshot && previousArray === null) previousArray = snapshot.slice()
       steps.push({
         type: 'compare',
         indices: [i, j],
-        array: Array.isArray(arr) ? arr.slice() : undefined,
+        array: snapshot,
         info: `comparing arr[${i}] and arr[${j}]`,
       })
     },
-    __record_mutation__(name, arr) {
+    __record_mutation__(arr) {
       if (stepCount++ >= MAX_STEPS) return
       const snapshot = Array.isArray(arr) ? arr.slice() : undefined
-      const prev = steps.length ? steps[steps.length - 1].__prevArray : null
-      steps.push({
-        type: 'set',
-        array: snapshot,
-        info: 'array updated',
-        __prevArray: snapshot,
-      })
+      if (!snapshot) return
+      if (previousArray === null) {
+        previousArray = snapshot.slice()
+        return
+      }
+      const changed = snapshot.reduce((indices, value, index) => {
+        if (value !== previousArray[index]) indices.push(index)
+        return indices
+      }, [])
+      if (changed.length === 2) {
+        steps.push({ type: 'swap', indices: changed, array: snapshot, info: `swapping arr[${changed[0]}] and arr[${changed[1]}]` })
+      } else if (changed.length === 1) {
+        steps.push({ type: 'set', indices: changed, array: snapshot, info: `setting arr[${changed[0]}]` })
+      }
+      previousArray = snapshot.slice()
     },
   }
 
   const context = vm.createContext(sandbox)
   vm.runInContext(instrumented, context, { timeout: 10000, filename: 'user_code.js' })
-
-  // Strip internal bookkeeping field
-  for (const s of steps) delete s.__prevArray
 
   if (steps.length === 0) {
     steps.push({ type: 'done', info: 'execution completed — no array-based state changes detected' })

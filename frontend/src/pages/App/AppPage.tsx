@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Language, AppSource, AppState, TemplateSolution, Template, Step, LANGUAGES } from '@/types'
 import { submitVisualize, fetchTemplateSolution, pollResult } from '@/lib/api'
 import { connectJobWS } from '@/lib/websocket'
@@ -9,6 +9,7 @@ import BarViz from '@/components/Visualization/BarViz'
 import GraphViz from '@/components/Visualization/GraphViz'
 import TreeViz from '@/components/Visualization/TreeViz'
 import LinkedListViz from '@/components/Visualization/LinkedListViz'
+import ScenarioViz from '@/components/Visualization/ScenarioViz'
 import StepPlayer from '@/components/StepPlayer/StepPlayer'
 import styles from './AppPage.module.css'
 
@@ -103,24 +104,37 @@ export default function AppPage() {
   const [source, setSource] = useState<AppSource>('custom')
   const [language, setLanguage] = useState<Language>('python')
   const [code, setCode] = useState(STARTER_CODE.python)
-  const [appState, setAppState] = useState<AppState>('empty')
+  const [appState, setAppState] = useState<AppState>('loaded')
   const [errorMsg, setErrorMsg] = useState('')
   const [activeMeta, setActiveMeta] = useState<TemplateSolution | null>(null)
   const [activeTemplate, setActiveTemplate] = useState<Template | null>(null)
   const [steps, setSteps] = useState<Step[]>([])
   const [currentStep, setCurrentStep] = useState(0)
   const [runId, setRunId] = useState(0)
+  const [visualizationMode, setVisualizationMode] = useState<'scenario' | 'abstract'>('scenario')
+  const requestVersionRef = useRef(0)
+  const wsCleanupRef = useRef<(() => void) | null>(null)
+
+  const cancelPendingDelivery = useCallback(() => {
+    requestVersionRef.current += 1
+    wsCleanupRef.current?.()
+    wsCleanupRef.current = null
+  }, [])
+
+  useEffect(() => () => {
+    wsCleanupRef.current?.()
+  }, [])
 
   const handleLanguageChange = async (lang: Language) => {
+    cancelPendingDelivery()
+    const requestVersion = requestVersionRef.current
     if (source === 'custom') {
       setLanguage(lang)
       setCode(STARTER_CODE[lang])
       // Reset any stale run results — old steps belong to the previous code/language.
       setSteps([])
       setErrorMsg('')
-      if (appState === 'active' || appState === 'error') {
-        setAppState('loaded')
-      }
+      setAppState('loaded')
       return
     }
 
@@ -138,6 +152,7 @@ export default function AppPage() {
     if (activeMeta) {
       try {
         const sol = await fetchTemplateSolution(activeMeta.template_id, lang)
+        if (requestVersion !== requestVersionRef.current) return
         setLanguage(lang)
         setCode(sol.code)
         setActiveMeta(sol)
@@ -145,6 +160,7 @@ export default function AppPage() {
         setErrorMsg('')
         setAppState('loaded')
       } catch {
+        if (requestVersion !== requestVersionRef.current) return
         setErrorMsg(
           `"${activeMeta.name}" doesn't have a ${LANGUAGES[lang].label} solution yet — staying on ${LANGUAGES[language].label}.`
         )
@@ -158,68 +174,97 @@ export default function AppPage() {
   }
 
   const handleTemplateSelect = async (template: Template) => {
-    setActiveTemplate(template)
-    const effectiveLang = template.languages.includes(language) ? language : 'python'
+    cancelPendingDelivery()
+    const requestVersion = requestVersionRef.current
+    const fallbackLang = template.languages.find(candidate => candidate in LANGUAGES) as Language | undefined
+    const effectiveLang = template.languages.includes(language) ? language : fallbackLang
+    if (!effectiveLang) {
+      setErrorMsg('This algorithm does not have a supported reference solution yet.')
+      return
+    }
     try {
       const sol = await fetchTemplateSolution(template.id, effectiveLang)
+      if (requestVersion !== requestVersionRef.current) return
       setCode(sol.code)
       setActiveMeta(sol)
-      setLanguage(effectiveLang as Language)
+      setActiveTemplate(template)
+      setLanguage(effectiveLang)
       setSource('template')
       setAppState('loaded')
       setSteps([])
       setErrorMsg('')
     } catch {
+      if (requestVersion !== requestVersionRef.current) return
       setErrorMsg('Failed to load this algorithm — please try another one.')
     }
   }
 
-  const handleStartCustomCode = () => {
-    setActiveMeta(null)
-    setActiveTemplate(null)
-    setAppState('loaded')
-  }
-
   const handleRun = async () => {
     if (!code.trim()) return
+    cancelPendingDelivery()
+    const requestVersion = requestVersionRef.current
     setAppState('running')
     setErrorMsg('')
     setSteps([])
     setCurrentStep(0)
 
+    const finishResult = (result: Awaited<ReturnType<typeof pollResult>>['result']) => {
+      if (!result || requestVersion !== requestVersionRef.current) return false
+      setSteps(result.steps)
+      setCurrentStep(0)
+      setAppState(result.error ? 'error' : 'active')
+      setErrorMsg(result.error ?? '')
+      setRunId(id => id + 1)
+      return true
+    }
+
+    const pollUntilComplete = async (jobId: string) => {
+      for (let attempt = 0; attempt < 3; attempt++) {
+        if (requestVersion !== requestVersionRef.current) return
+        const response = await pollResult(jobId)
+        if (requestVersion !== requestVersionRef.current) return
+        if (response.status === 'done' && finishResult(response.result)) return
+        if (response.status === 'error') throw new Error(response.result?.error || 'Sandbox execution failed')
+      }
+      throw new Error('The sandbox is still processing this job. Please run it again in a moment.')
+    }
+
     try {
       const { job_id, cached } = await submitVisualize(code, language)
+      if (requestVersion !== requestVersionRef.current) return
 
       if (cached) {
-        // Immediately fetch cached result via polling
-        const { result } = await pollResult(job_id)
-        if (result) {
-          setSteps(result.steps)
-          setCurrentStep(0)
-          setAppState('active')
-          setRunId(id => id + 1)
-        }
+        await pollUntilComplete(job_id)
         return
       }
 
-      // Open WebSocket for live result delivery
+      let settled = false
       const cleanup = connectJobWS(
         job_id,
         (result) => {
-          setSteps(result.steps)
-          setCurrentStep(0)
-          setAppState(result.error ? 'error' : 'active')
-          if (result.error) setErrorMsg(result.error)
-          setRunId(id => id + 1)
+          if (settled || requestVersion !== requestVersionRef.current) return
+          settled = true
+          finishResult(result)
           cleanup()
+          if (wsCleanupRef.current === cleanup) wsCleanupRef.current = null
         },
-        (err) => {
-          setErrorMsg(err)
-          setAppState('error')
+        () => {
+          if (settled || requestVersion !== requestVersionRef.current) return
           cleanup()
+          if (wsCleanupRef.current === cleanup) wsCleanupRef.current = null
+          void pollUntilComplete(job_id).then(() => {
+            settled = true
+          }).catch((error: Error) => {
+            if (settled || requestVersion !== requestVersionRef.current) return
+            settled = true
+            setErrorMsg(error.message)
+            setAppState('error')
+          })
         }
       )
+      wsCleanupRef.current = cleanup
     } catch (e: unknown) {
+      if (requestVersion !== requestVersionRef.current) return
       setErrorMsg(e instanceof Error ? e.message : 'Submission failed')
       setAppState('error')
     }
@@ -246,15 +291,26 @@ export default function AppPage() {
   const renderType = activeMeta?.render_type ?? 'array'
 
   const handleSourceChange = (s: AppSource) => {
+    cancelPendingDelivery()
     setSource(s)
     setActiveMeta(null)
     setActiveTemplate(null)
     setSteps([])
     setErrorMsg('')
-    setAppState('empty')
+    setAppState(s === 'custom' ? 'loaded' : 'empty')
     if (s === 'custom') {
       setCode(STARTER_CODE[language])
     }
+  }
+
+  const handleCodeChange = (nextCode: string) => {
+    if (nextCode === code) return
+    cancelPendingDelivery()
+    setCode(nextCode)
+    setSteps([])
+    setCurrentStep(0)
+    setErrorMsg('')
+    setAppState('loaded')
   }
 
   return (
@@ -269,7 +325,7 @@ export default function AppPage() {
 
       <div className={styles.main}>
         {/* Action bar (hidden until code is loaded — matches the mockup's
-            "empty" screen, which has no Run/Share row) */}
+            "empty" screen, which has no Run row) */}
         {showEditorGrid && (
         <div className={styles.actionbar}>
           <span className={styles.actionbarTitle}>{filename}</span>
@@ -293,12 +349,6 @@ export default function AppPage() {
                 </>
               )}
             </button>
-            <button className={styles.btnSecondary}>
-              <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                <path d="M9 4a1.5 1.5 0 100-3 1.5 1.5 0 000 3zM3 7.5a1.5 1.5 0 100-3 1.5 1.5 0 000 3zM9 11a1.5 1.5 0 100-3 1.5 1.5 0 000 3zM4.4 6.2l3.2-1.9M4.4 6.8l3.2 1.9" stroke="currentColor" strokeWidth="1"/>
-              </svg>
-              Share
-            </button>
           </div>
         </div>
         )}
@@ -307,24 +357,15 @@ export default function AppPage() {
         {isEmptyState && (
           <div className={styles.emptyBody}>
             <div className={styles.emptyLead}>
-              <h2>Select an algorithm, or paste your own.</h2>
+              <h2>Choose an algorithm to explore.</h2>
               <p>
-                Every entry below loads a canonical, tested implementation pre-selected in
-                your chosen language. Edit it, or clear the editor to write your own from scratch.
+                Every entry loads a canonical implementation and a real-world story for the
+                visualization. You can still edit the code before running it.
               </p>
             </div>
 
             <AlgoPicker language={language} onSelect={handleTemplateSelect} />
 
-            {source === 'custom' && (
-              <>
-                <div className={styles.dividerOr}>or</div>
-                <button className={styles.customHintBtn} onClick={handleStartCustomCode}>
-                  paste your own function — any array, graph, tree, or recursive
-                  algorithm is supported →
-                </button>
-              </>
-            )}
 
             {errorMsg && (
               <div className={styles.errorMsg}>{errorMsg}</div>
@@ -360,19 +401,29 @@ export default function AppPage() {
                   <span>editor</span>
                 </div>
                 <div className={styles.editorWrap}>
-                  <CodeEditor code={code} language={language} onChange={setCode} />
+                  <CodeEditor code={code} language={language} onChange={handleCodeChange} />
                 </div>
               </div>
 
               <div className={styles.panel}>
                 <div className={styles.panelHead}>
                   <span>visualization</span>
-                  {isActive && renderType === 'array' && steps[currentStep]?.array && (
-                    <span>array — length {steps[currentStep].array!.length}</span>
-                  )}
-                  {isActive && renderType !== 'array' && (
-                    <span>{renderType} — {activeMeta?.name}</span>
-                  )}
+                  <div className={styles.vizModeToggle} aria-label="visualization lens">
+                    <button
+                      className={visualizationMode === 'scenario' ? styles.vizModeActive : styles.vizModeButton}
+                      onClick={() => setVisualizationMode('scenario')}
+                      aria-pressed={visualizationMode === 'scenario'}
+                    >
+                      🌍 Real-world
+                    </button>
+                    <button
+                      className={visualizationMode === 'abstract' ? styles.vizModeActive : styles.vizModeButton}
+                      onClick={() => setVisualizationMode('abstract')}
+                      aria-pressed={visualizationMode === 'abstract'}
+                    >
+                      Abstract
+                    </button>
+                  </div>
                   {isRunning && <span className={styles.runningLabel}>executing...</span>}
                 </div>
 
@@ -400,7 +451,16 @@ export default function AppPage() {
                     </div>
                   )}
                   {isActive && (
-                    renderType === 'graph' ? (
+                    visualizationMode === 'scenario' ? (
+                      <ScenarioViz
+                        step={steps[currentStep] ?? null}
+                        allSteps={steps}
+                        currentIndex={currentStep}
+                        renderType={renderType}
+                        template={activeMeta}
+                        code={code}
+                      />
+                    ) : renderType === 'graph' ? (
                       <GraphViz step={steps[currentStep] ?? null} allSteps={steps} currentIndex={currentStep} />
                     ) : renderType === 'tree' ? (
                       <TreeViz step={steps[currentStep] ?? null} allSteps={steps} currentIndex={currentStep} />

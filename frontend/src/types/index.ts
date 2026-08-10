@@ -92,7 +92,7 @@ export const LANGUAGES: Record<Language, LangMeta> = {
     monacoLang: 'javascript',
     filename: 'solution.js',
     status: 'stable',
-    runtime: 'Node 20 · V8 inspector',
+    runtime: 'Node 20 · source instrumentation',
   },
   go: {
     label: 'Go',

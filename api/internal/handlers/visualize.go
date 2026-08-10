@@ -22,7 +22,7 @@ import (
 type VisualizeHandler struct {
 	producer *kafka.Producer
 	redis    *redisclient.Client
-	jobsTopic string
+	timeout  time.Duration
 
 	// waiters maps job_id → channel that receives the Result when ready.
 	mu      sync.RWMutex
@@ -30,12 +30,12 @@ type VisualizeHandler struct {
 }
 
 // NewVisualizeHandler constructs a VisualizeHandler.
-func NewVisualizeHandler(producer *kafka.Producer, rdb *redisclient.Client, jobsTopic string) *VisualizeHandler {
+func NewVisualizeHandler(producer *kafka.Producer, rdb *redisclient.Client, timeout time.Duration) *VisualizeHandler {
 	return &VisualizeHandler{
-		producer:  producer,
-		redis:     rdb,
-		jobsTopic: jobsTopic,
-		waiters:   make(map[string][]chan *models.Result),
+		producer: producer,
+		redis:    rdb,
+		timeout:  timeout,
+		waiters:  make(map[string][]chan *models.Result),
 	}
 }
 
@@ -130,6 +130,16 @@ func (h *VisualizeHandler) HandleVisualize(w http.ResponseWriter, r *http.Reques
 // HandleStatus handles GET /api/v1/visualize/:job_id (polling fallback).
 func (h *VisualizeHandler) HandleStatus(w http.ResponseWriter, r *http.Request) {
 	jobID := chi.URLParam(r, "job_id")
+	if _, err := uuid.Parse(jobID); err != nil {
+		writeJSON(w, http.StatusBadRequest, models.ErrorResponse{Error: "invalid job id", Code: 400})
+		return
+	}
+
+	// Subscribe before checking Redis so a result cannot land between the cache check
+	// and waiter registration. NotifyResult uses a buffered channel, so an in-flight
+	// completion is safely retained while we perform the Redis lookup.
+	ch := h.subscribe(jobID)
+	defer h.unsubscribe(jobID, ch)
 
 	// Fast path: check Redis.
 	result, err := h.redis.GetResultByJobID(r.Context(), jobID)
@@ -142,11 +152,8 @@ func (h *VisualizeHandler) HandleStatus(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	// Long-poll: wait up to 25 seconds.
-	ch := h.subscribe(jobID)
-	defer h.unsubscribe(jobID, ch)
-
-	ctx, cancel := context.WithTimeout(r.Context(), 25*time.Second)
+	// Long-poll for the configured job timeout.
+	ctx, cancel := context.WithTimeout(r.Context(), h.timeout)
 	defer cancel()
 
 	select {

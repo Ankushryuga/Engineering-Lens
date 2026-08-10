@@ -3,11 +3,11 @@
 Step through exactly how your algorithm executes.
 
 Paste a function in Python, Go, Java, JavaScript, or C++, run it in an
-isolated sandbox, and inspect every comparison, swap, and recursive call as a
-reproducible, seekable sequence of steps — or skip the paste and pick one of
-~55 canonical, team-authored algorithms from the built-in catalog and run
-that instead. Both paths share the same sandbox, the same step format, and
-the same player.
+isolated sandbox, and inspect its normalized execution steps as a reproducible,
+seekable sequence — or pick one of ~55 canonical, team-authored algorithms
+from the built-in catalog. The visualization defaults to a **real-world lens**
+(packages, maps, trains, queues, schedules, puzzles, and more) and can be
+toggled back to the underlying abstract data structure at any time.
 
 Full product design and rationale live in [`requirement_doc.md`](./requirement_doc.md).
 
@@ -80,8 +80,9 @@ See `requirement_doc.md` §3.3 for the full stack rationale.
 .
 ├── frontend/           React + TypeScript app (Vite)
 │   └── src/
-│       ├── components/ Sidebar, CodeEditor, BarViz, StepPlayer, AlgoPicker
-│       ├── pages/       Landing, App (empty/active state), Docs
+│       ├── components/ Sidebar, CodeEditor, visualizers, StepPlayer, AlgoPicker
+│       ├── data/        real-world scenario mappings for the catalog
+│       ├── pages/       Landing, App, Docs
 │       └── lib/         REST + WebSocket API clients
 ├── api/                 Go REST/WebSocket API
 │   └── internal/
@@ -111,7 +112,8 @@ See `requirement_doc.md` §3.3 for the full stack rationale.
 ```bash
 git clone <this-repo>
 cd Algo-Visualizer
-cp .env.example .env
+# Optional for Compose overrides; useful as a reference for local API settings:
+# cp .env.example .env
 docker compose up --build
 ```
 
@@ -149,17 +151,20 @@ npm install
 npm run dev
 ```
 
-**API** (requires local Postgres/Redis/Kafka, or point at the ones from `docker compose up postgres redis kafka zookeeper`)
+**API** (using Postgres/Redis/Kafka from `docker compose up postgres redis kafka zookeeper`)
 ```bash
 cd api
+POSTGRES_DSN='postgres://algo:algo_secret@localhost:5432/algo_visualizer?sslmode=disable' \
+REDIS_ADDR=localhost:6380 \
+KAFKA_BROKERS=localhost:29094 \
 go run ./cmd/server
 ```
 
-**A single sandbox worker** (e.g. Python)
+**A single sandbox worker** (e.g. Python, using Compose Kafka)
 ```bash
 cd sandbox/python
 pip install -r requirements.txt
-python worker.py
+KAFKA_BROKERS=localhost:29094 python worker.py
 ```
 
 ## API reference
@@ -176,7 +181,7 @@ Submit code for sandboxed execution.
 ```
 
 ### `GET /api/v1/visualize/:job_id`
-Long-poll for a result (up to 25s). Prefer the WebSocket endpoint for push delivery.
+Long-poll for a result (up to `JOB_TIMEOUT_SECONDS`, 30s by default). Prefer the WebSocket endpoint for push delivery.
 
 ### `WS /ws/:job_id`
 Streams `{"status":"pending"}` keepalives, then a single
@@ -209,8 +214,10 @@ third-party problem platform in the loop (see `requirement_doc.md` §3.6):
 | Strings | KMP, Rabin-Karp, Z-Algorithm, Longest Palindromic Substring |
 | Math & Bit Manipulation | Sieve of Eratosthenes, GCD/LCM, Fast Exponentiation, Bit basics |
 
-Every entry currently ships a tested Python reference solution; additional
-language coverage is being backfilled per entry (see [Roadmap](#roadmap)).
+Every entry currently ships a Python reference solution; additional language
+coverage is being backfilled per entry (see [Roadmap](#roadmap)). Every one of
+the 55 catalog entries also has a concrete real-world scenario used by the
+default visualization lens.
 
 ## Language support & sandbox notes
 
@@ -218,7 +225,7 @@ language coverage is being backfilled per entry (see [Roadmap](#roadmap)).
 |---|---|---|---|
 | Python | 3.11 | Stable | `sys.settrace()` — dynamic line-level tracing |
 | JavaScript | Node 20 | Stable | Source-level instrumentation (see trade-offs below) |
-| Go | 1.24 | Stable | Source-level instrumentation, compiled via `go run` |
+| Go | 1.22 | Stable | Source-level instrumentation, compiled via `go run` |
 | Java | OpenJDK 21 | Stable | Source-level instrumentation, compiled via `javac`/`java` |
 | C / C++ | GCC 13 (C++20) | Beta | Source-level instrumentation, compiled via `g++` |
 
@@ -234,8 +241,10 @@ is fully language-agnostic:
 }
 ```
 
-Every sandbox runs with no network access, a hard wall-clock timeout
-(10s interpreted / 20s compiled), a memory cap, and a non-root user. A
+Every sandbox worker is attached only to an **internal Kafka network**, with
+no outbound internet path. Workers also use a read-only root filesystem,
+`/tmp` scratch space, PID/CPU/memory caps, `no-new-privileges`, a hard
+wall-clock timeout (10s interpreted / 20s compiled), and a non-root user. A
 static pre-check also rejects obviously dangerous patterns (`os.system`,
 `child_process`, `Runtime.exec`, etc.) before code reaches the sandbox, as
 defense-in-depth — not a replacement for the container isolation itself.
@@ -246,14 +255,13 @@ This is a v1 build; the following are deliberate, documented scope cuts
 (see `requirement_doc.md` §3.8 "Open questions" for the original design
 discussion):
 
-- **Instrumentation is heuristic, not a full symbolic trace.** All five
-  sandboxes detect the "subject" array and instrument comparisons/mutations
-  involving it. This correctly visualizes idiomatic comparison/swap-style
-  sorting and searching code (the catalog's canonical style) but will not
-  produce a meaningful trace for arbitrary, unrelated code shapes (e.g.
-  graph/tree/DP problems using nested structures instead of a flat array).
-  Extending `renderType`-aware tracing for graphs/trees/DP is the natural
-  next step (see Roadmap).
+- **Custom-code instrumentation is heuristic, not a full symbolic trace.**
+  Flat-array code gets structured compare/swap/set state when the tracer can
+  recognize it. Catalog graph/tree/list algorithms can emit richer explicit
+  steps, and other code falls back to real source-line execution progress so
+  the player remains seekable without fabricating algorithm state. Arbitrary
+  custom nested structures (for example a user-written DP table) still need
+  richer `renderType`-aware tracing to visualize their internal values.
 - **JavaScript uses source instrumentation, not the V8 inspector protocol**
   described in the original design doc. A true debugger-level trace via the
   inspector protocol was descoped in favor of shipping a working, consistent
@@ -272,7 +280,7 @@ discussion):
 Per `requirement_doc.md` §3.4/§3.7:
 
 - [ ] Backfill JavaScript/Go/Java/C++ reference solutions across the catalog
-- [ ] Graph/tree/DP-aware step recording (`renderType: "graph" | "tree" | "table"`)
+- [ ] Expand custom-code tracing beyond flat-array heuristics (DP tables and richer structures)
 - [ ] Recursion tree / call-stack visualization
 - [ ] Shareable visualization links
 - [ ] User accounts (save/share history)

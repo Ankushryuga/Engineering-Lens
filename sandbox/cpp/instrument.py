@@ -49,6 +49,7 @@ namespace __algoviz__ {
     }
 
     inline void recordCompare(int i, int j, const std::vector<int>& arr) {
+        if (!__has_prev__) { __prev__ = arr; __has_prev__ = true; }
         std::ostringstream ss;
         ss << "{\\"type\\":\\"compare\\",\\"indices\\":[" << i << "," << j << "],\\"array\\":"
            << vecToJson(arr) << ",\\"info\\":\\"comparing arr[" << i << "] and arr[" << j << "]\\"}";
@@ -81,10 +82,14 @@ namespace __algoviz__ {
         if (__count__ == 0) {
             __steps__ << "{\\"type\\":\\"done\\",\\"info\\":\\"execution completed \\u2014 no array-based state changes detected\\"}";
         } else {
-            __steps__ << ",{\\"type\\":\\"done\\",\\"info\\":\\"done\\"}";
+            __steps__ << ",{\\"type\\":\\"done\\",\\"array\\":" << vecToJson(__prev__) << ",\\"info\\":\\"done\\"}";
         }
         std::cout << "__STEPS_JSON__[" << __steps__.str() << "]" << std::endl;
     }
+
+    struct FinalizeGuard {
+        ~FinalizeGuard() { finalizeSteps(); }
+    };
 }
 using __algoviz__::recordCompare;
 using __algoviz__::recordMutation;
@@ -131,15 +136,17 @@ def instrument(code: str) -> str:
                 if len(matches) >= 2:
                     out.append(f"__algoviz__::recordCompare(({matches[0]}), ({matches[1]}), {subject});")
             out.append(line)
-            if assign_re.search(line):
+            if assign_re.search(line) or ("std::swap" in line and subject + "[" in line):
                 out.append(f"__algoviz__::recordMutation({subject});")
         code = "\n".join(out)
 
     m = MAIN_RE.search(code)
     if m:
         open_brace_idx = code.index("{", m.end() - 1)
-        close_idx = _find_matching_brace(code, open_brace_idx)
-        if close_idx != -1:
-            code = code[:close_idx] + "\n__algoviz__::finalizeSteps();\n" + code[close_idx:]
+        code = (
+            code[:open_brace_idx + 1]
+            + "\n__algoviz__::FinalizeGuard __algoviz_finalize_guard__;\n"
+            + code[open_brace_idx + 1:]
+        )
 
     return RUNTIME_PRELUDE + "\n" + code

@@ -51,12 +51,16 @@ func (c *Client) GetResult(ctx context.Context, hash string) (*models.Result, er
 
 // SetResult stores a result in Redis keyed by hash and job_id.
 func (c *Client) SetResult(ctx context.Context, hash, jobID string, r *models.Result) error {
-	data, err := json.Marshal(r)
+	stored := *r
+	stored.Hash = ""
+	data, err := json.Marshal(&stored)
 	if err != nil {
 		return fmt.Errorf("redis: marshal result: %w", err)
 	}
 	pipe := c.rdb.Pipeline()
-	pipe.Set(ctx, resultKey(hash), data, resultTTL)
+	if hash != "" {
+		pipe.Set(ctx, resultKey(hash), data, resultTTL)
+	}
 	pipe.Set(ctx, jobKey(jobID), data, resultTTL)
 	_, err = pipe.Exec(ctx)
 	return err
@@ -83,5 +87,5 @@ func (c *Client) Close() error {
 	return c.rdb.Close()
 }
 
-func resultKey(hash string) string  { return "result:hash:" + hash }
-func jobKey(jobID string) string    { return "result:job:" + jobID }
+func resultKey(hash string) string { return "result:hash:" + hash }
+func jobKey(jobID string) string   { return "result:job:" + jobID }

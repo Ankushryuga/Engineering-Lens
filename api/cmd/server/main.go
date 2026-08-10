@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -31,11 +32,12 @@ func main() {
 	postgresDSN := mustEnv("POSTGRES_DSN")
 	redisAddr := getEnv("REDIS_ADDR", "localhost:6379")
 	redisPassword := getEnv("REDIS_PASSWORD", "")
-	kafkaBrokers := strings.Split(getEnv("KAFKA_BROKERS", "localhost:29092"), ",")
+	kafkaBrokers := splitEnvList(getEnv("KAFKA_BROKERS", "localhost:29092"))
 	jobsTopic := getEnv("KAFKA_JOBS_TOPIC", "visualize-jobs")
 	resultsTopic := getEnv("KAFKA_RESULTS_TOPIC", "visualize-results")
-	corsOrigins := strings.Split(getEnv("CORS_ORIGINS", "http://localhost:5173"), ",")
-	rateLimitRPS := 10.0
+	corsOrigins := splitEnvList(getEnv("CORS_ORIGINS", "http://localhost:5173"))
+	rateLimitRPS := getEnvFloat("RATE_LIMIT_RPS", 10)
+	jobTimeout := time.Duration(getEnvFloat("JOB_TIMEOUT_SECONDS", 30) * float64(time.Second))
 
 	// ── Postgres ─────────────────────────────────────────────────────────────
 	log.Println("connecting to postgres...")
@@ -68,8 +70,8 @@ func main() {
 	defer producer.Close()
 
 	// ── Handlers ──────────────────────────────────────────────────────────────
-	vh := handlers.NewVisualizeHandler(producer, rdb, jobsTopic)
-	wsh := handlers.NewWSHandler(vh, rdb)
+	vh := handlers.NewVisualizeHandler(producer, rdb, jobTimeout)
+	wsh := handlers.NewWSHandler(vh, rdb, corsOrigins, jobTimeout)
 	th := handlers.NewTemplatesHandler(db)
 
 	// ── Kafka consumer (results) ──────────────────────────────────────────────
@@ -81,8 +83,12 @@ func main() {
 			log.Printf("result received: job=%s lang=%s steps=%d dur=%.1fms",
 				result.JobID, result.Language, len(result.Steps), result.DurationMS)
 
-			// Cache in Redis.
-			_ = rdb.SetResult(ctx, result.JobID, result.JobID, result)
+			// Cache by submission hash and job ID. The hash is internal routing/cache
+			// metadata, so remove it before the result is pushed to clients.
+			if err := rdb.SetResult(ctx, result.Hash, result.JobID, result); err != nil {
+				log.Printf("redis: failed to cache result for job %s: %v", result.JobID, err)
+			}
+			result.Hash = ""
 
 			// Notify in-flight WebSocket / long-poll waiters.
 			vh.NotifyResult(result)
@@ -95,7 +101,7 @@ func main() {
 	r := chi.NewRouter()
 	r.Use(chimiddleware.Logger)
 	r.Use(chimiddleware.Recoverer)
-	r.Use(chimiddleware.Timeout(60 * time.Second))
+	r.Use(chimiddleware.Timeout(jobTimeout + 5*time.Second))
 	r.Use(middleware.CORS(corsOrigins))
 
 	// Health check
@@ -116,7 +122,7 @@ func main() {
 	})
 
 	// WebSocket
-	r.Get("/ws/{job_id}", wsh.HandleWS)
+	r.With(middleware.RateLimit(rateLimitRPS)).Get("/ws/{job_id}", wsh.HandleWS)
 
 	// ── HTTP server ───────────────────────────────────────────────────────────
 	srv := &http.Server{
@@ -156,4 +162,29 @@ func mustEnv(key string) string {
 		log.Fatalf("required environment variable %q is not set", key)
 	}
 	return v
+}
+
+func getEnvFloat(key string, fallback float64) float64 {
+	v := os.Getenv(key)
+	if v == "" {
+		return fallback
+	}
+	parsed, err := strconv.ParseFloat(v, 64)
+	if err != nil || parsed <= 0 {
+		log.Printf("invalid %s=%q; using %.1f", key, v, fallback)
+		return fallback
+	}
+	return parsed
+}
+
+func splitEnvList(value string) []string {
+	parts := strings.Split(value, ",")
+	out := make([]string, 0, len(parts))
+	for _, part := range parts {
+		part = strings.TrimSpace(part)
+		if part != "" {
+			out = append(out, part)
+		}
+	}
+	return out
 }

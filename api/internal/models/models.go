@@ -41,9 +41,9 @@ type VisualizeResponse struct {
 
 // JobStatusResponse is returned from GET /api/v1/visualize/:job_id.
 type JobStatusResponse struct {
-	JobID   string  `json:"job_id"`
-	Status  string  `json:"status"` // "pending" | "done" | "error"
-	Result  *Result `json:"result,omitempty"`
+	JobID  string  `json:"job_id"`
+	Status string  `json:"status"` // "pending" | "done" | "error"
+	Result *Result `json:"result,omitempty"`
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -71,14 +71,23 @@ type Step struct {
 	Edges     [][]interface{}        `json:"edges,omitempty"`     // [from, to, weight] (graph_init only)
 	Source    string                 `json:"source,omitempty"`    // the algorithm's source/start node (graph_init only)
 	Node      string                 `json:"node,omitempty"`      // node touched by this step (visit)
-	Edge      []string               `json:"edge,omitempty"`      // [from, to] edge touched by this step (relax)
+	Edge      []interface{}          `json:"edge,omitempty"`      // [from, to] edge touched by this step (relax); to may be null
 	Distances map[string]interface{} `json:"distances,omitempty"` // current known distances, keyed by node
 	Path      []string               `json:"path,omitempty"`      // final shortest path, in order (path/done)
+
+	// Linked-list-specific fields. These must live in the API model as well as
+	// the worker trace; otherwise json.Unmarshal silently drops them before the
+	// result is cached/pushed to the frontend.
+	Next     map[string]*string  `json:"next,omitempty"`
+	Lists    map[string][]string `json:"lists,omitempty"`
+	Pointers map[string]*string  `json:"pointers,omitempty"`
+	Merged   []string            `json:"merged,omitempty"`
 }
 
 // Result is the message published to the visualize-results Kafka topic.
 type Result struct {
 	JobID      string  `json:"job_id"`
+	Hash       string  `json:"hash,omitempty"`
 	Steps      []Step  `json:"steps"`
 	Error      string  `json:"error,omitempty"`
 	Language   string  `json:"language"`
@@ -97,7 +106,7 @@ type Template struct {
 	Difficulty      string   `json:"difficulty"` // Fundamental | Intermediate | Advanced
 	TimeComplexity  string   `json:"time_complexity"`
 	SpaceComplexity string   `json:"space_complexity"`
-	RenderType      string   `json:"render_type"` // "array" | "graph" — selects the frontend visualization component
+	RenderType      string   `json:"render_type"` // "array" | "graph" | "tree" | "linked_list" — selects the frontend visualization component
 	Languages       []string `json:"languages"`   // which languages have a solution
 }
 

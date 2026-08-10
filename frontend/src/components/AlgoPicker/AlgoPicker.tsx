@@ -15,13 +15,27 @@ export default function AlgoPicker({ language, onSelect }: AlgoPickerProps) {
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [difficulty, setDifficulty] = useState('')
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState('')
 
   useEffect(() => {
+    let active = true
     setLoading(true)
+    setLoadError('')
     fetchTemplates(undefined, difficulty || undefined)
-      .then(setTemplates)
-      .catch(console.error)
-      .finally(() => setLoading(false))
+      .then(items => {
+        if (active) setTemplates(items)
+      })
+      .catch(() => {
+        if (!active) return
+        setTemplates([])
+        setLoadError('Could not load the algorithm catalog. Check the API and try again.')
+      })
+      .finally(() => {
+        if (active) setLoading(false)
+      })
+    return () => {
+      active = false
+    }
   }, [difficulty])
 
   // Group by category
@@ -55,7 +69,7 @@ export default function AlgoPicker({ language, onSelect }: AlgoPickerProps) {
         {Object.entries(grouped).map(([category, items]) => (
           <optgroup key={category} label={category}>
             {items.map(t => (
-              <option key={t.id} value={t.id}>
+              <option key={t.id} value={t.id} disabled={!t.languages.includes(language)}>
                 {t.name}
                 {!t.languages.includes(language) ? ' (not available in selected language)' : ''}
               </option>
@@ -77,8 +91,8 @@ export default function AlgoPicker({ language, onSelect }: AlgoPickerProps) {
         </select>
       </div>
 
-      <div className={styles.count}>
-        {loading ? 'loading...' : `${availableForLang} algorithms available in ${language}`}
+      <div className={loadError ? styles.error : styles.count}>
+        {loadError || (loading ? 'loading...' : `${availableForLang} algorithms available in ${language}`)}
       </div>
     </div>
   )

@@ -13,29 +13,44 @@ export function connectJobWS(
   const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws'
   const host = window.location.host
   const ws = new WebSocket(`${protocol}://${host}/ws/${jobId}`)
+  let terminal = false
+
+  const fail = (message: string) => {
+    if (terminal) return
+    terminal = true
+    onError(message)
+  }
 
   ws.onmessage = (event) => {
     try {
       const msg: WSMessage = JSON.parse(event.data)
       if (msg.status === 'done') {
+        if (terminal) return
+        terminal = true
         onResult(msg.result)
         ws.close()
       } else if (msg.status === 'timeout') {
-        onError('The job timed out — the sandbox took too long to respond.')
+        fail('The WebSocket wait timed out. Falling back to polling.')
         ws.close()
       }
-      // 'pending' is a keepalive — ignore
+      // 'pending' is a keepalive — ignore it.
     } catch {
-      // ignore parse errors
+      // Ignore malformed keepalive/proxy frames; a close/error still triggers fallback.
     }
   }
 
   ws.onerror = () => {
-    onError('WebSocket connection error. Falling back to polling.')
+    fail('WebSocket connection error. Falling back to polling.')
   }
 
-  // Return a cleanup function
+  ws.onclose = () => {
+    fail('WebSocket connection closed before the result arrived. Falling back to polling.')
+  }
+
+  // Return a cleanup function. Marking the socket terminal prevents a deliberate
+  // close (after a result, rerun, or unmount) from triggering the fallback path.
   return () => {
+    terminal = true
     if (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING) {
       ws.close()
     }

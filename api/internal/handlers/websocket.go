@@ -10,32 +10,43 @@ import (
 	redisclient "algo-visualizer/api/internal/redis"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 )
 
-var upgrader = websocket.Upgrader{
-	ReadBufferSize:  1024,
-	WriteBufferSize: 1024,
-	CheckOrigin: func(r *http.Request) bool {
-		return true // origin check is handled by CORS middleware
-	},
-}
-
 // WSHandler handles WebSocket connections at /ws/:job_id.
 type WSHandler struct {
-	vh    *VisualizeHandler
-	redis *redisclient.Client
+	vh             *VisualizeHandler
+	redis          *redisclient.Client
+	allowedOrigins map[string]bool
+	timeout        time.Duration
 }
 
 // NewWSHandler constructs a WSHandler.
-func NewWSHandler(vh *VisualizeHandler, rdb *redisclient.Client) *WSHandler {
-	return &WSHandler{vh: vh, redis: rdb}
+func NewWSHandler(vh *VisualizeHandler, rdb *redisclient.Client, origins []string, timeout time.Duration) *WSHandler {
+	allowed := make(map[string]bool, len(origins))
+	for _, origin := range origins {
+		allowed[origin] = true
+	}
+	return &WSHandler{vh: vh, redis: rdb, allowedOrigins: allowed, timeout: timeout}
 }
 
 // HandleWS upgrades the connection, waits for a result, then pushes it.
 func (h *WSHandler) HandleWS(w http.ResponseWriter, r *http.Request) {
 	jobID := chi.URLParam(r, "job_id")
+	if _, err := uuid.Parse(jobID); err != nil {
+		http.Error(w, "invalid job id", http.StatusBadRequest)
+		return
+	}
 
+	upgrader := websocket.Upgrader{
+		ReadBufferSize:  1024,
+		WriteBufferSize: 1024,
+		CheckOrigin: func(req *http.Request) bool {
+			origin := req.Header.Get("Origin")
+			return origin == "" || h.allowedOrigins["*"] || h.allowedOrigins[origin]
+		},
+	}
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Printf("ws: upgrade error: %v", err)
@@ -43,22 +54,23 @@ func (h *WSHandler) HandleWS(w http.ResponseWriter, r *http.Request) {
 	}
 	defer conn.Close()
 
-	// Check Redis first (job may already be done).
+	// Subscribe before checking Redis so a completion cannot be missed in the
+	// small window between the cache lookup and waiter registration.
+	ch := h.vh.subscribe(jobID)
+	defer h.vh.unsubscribe(jobID, ch)
+
+	// Check Redis after subscribing (job may already be done).
 	result, err := h.redis.GetResultByJobID(r.Context(), jobID)
 	if err == nil && result != nil {
 		sendWSResult(conn, result)
 		return
 	}
 
-	// Subscribe to in-memory notifier.
-	ch := h.vh.subscribe(jobID)
-	defer h.vh.unsubscribe(jobID, ch)
-
 	// Send a "pending" ping every 5 s so the client knows we're alive.
 	ticker := time.NewTicker(5 * time.Second)
 	defer ticker.Stop()
 
-	timeout := time.After(60 * time.Second)
+	timeout := time.After(h.timeout)
 
 	for {
 		select {

@@ -94,7 +94,7 @@ export default function DocsPage() {
             <tbody>
               {[
                 ['Python', '3.11', 'sys.settrace() line-level trace', 'stable'],
-                ['JavaScript', 'Node 20', 'V8 inspector protocol', 'stable'],
+                ['JavaScript', 'Node 20', 'Source-level instrumentation', 'stable'],
                 ['Go', '1.22', 'Build + source-level instrumentation', 'stable'],
                 ['Java', 'OpenJDK 21', 'Compiled then run in-container', 'stable'],
                 ['C / C++', 'GCC 13 (C++20)', 'Compiled then run in-container', 'beta'],
@@ -120,7 +120,7 @@ export default function DocsPage() {
             Each language runs in its own Docker image. Sandboxes are configured with:
           </p>
           <ul className={styles.list}>
-            <li>No network access (DNS disabled)</li>
+            <li>No outbound network access (workers are attached only to an internal Kafka network)</li>
             <li>Hard wall-clock timeout (10 s interpreted, 20 s compiled)</li>
             <li>Memory cap (128 MB interpreted, 256 MB compiled)</li>
             <li>Read-only filesystem except a per-job scratch directory</li>
@@ -140,7 +140,7 @@ export default function DocsPage() {
             The catalog contains ~50 canonical, team-authored algorithms across 11
             categories. Every entry stores: name, category, difficulty tier
             (Fundamental / Intermediate / Advanced), time and space complexity, and
-            reference solutions in at least two of the five supported languages.
+            reference solutions, with Python coverage across the full catalog and other languages being backfilled.
           </p>
           <table className={styles.table}>
             <thead>

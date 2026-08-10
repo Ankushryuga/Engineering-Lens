@@ -42,6 +42,7 @@ class AlgoVizRuntime {
     }
 
     static void recordCompare(int i, int j, int[] arr) {
+        if (prev == null) prev = arr.clone();
         String json = "{\\"type\\":\\"compare\\",\\"indices\\":[" + i + "," + j + "],\\"array\\":"
             + arrToJson(arr) + ",\\"info\\":\\"comparing arr[" + i + "] and arr[" + j + "]\\"}";
         appendStep(json);
@@ -72,7 +73,7 @@ class AlgoVizRuntime {
         if (count == 0) {
             steps.append("{\\"type\\":\\"done\\",\\"info\\":\\"execution completed \\u2014 no array-based state changes detected\\"}");
         } else {
-            steps.append(",{\\"type\\":\\"done\\",\\"info\\":\\"done\\"}");
+            steps.append(",{\\"type\\":\\"done\\",\\"array\\":" + arrToJson(prev) + ",\\"info\\":\\"done\\"}");
         }
         steps.append("]");
         System.out.println("__STEPS_JSON__" + steps.toString());
@@ -122,12 +123,18 @@ def instrument(code: str) -> str:
                 out.append(f"AlgoVizRuntime.recordMutation({subject});")
         code = "\n".join(out)
 
-    # Insert finalizeSteps() before the closing brace of main().
+    # Wrap main in try/finally so finalizeSteps() runs even on an early return.
     m = MAIN_RE.search(code)
     if m:
         open_brace_idx = code.index("{", m.end() - 1)
         close_idx = _find_matching_brace(code, open_brace_idx)
         if close_idx != -1:
-            code = code[:close_idx] + "\nAlgoVizRuntime.finalizeSteps();\n" + code[close_idx:]
+            code = (
+                code[:open_brace_idx + 1]
+                + "\ntry {\n"
+                + code[open_brace_idx + 1:close_idx]
+                + "\n} finally { AlgoVizRuntime.finalizeSteps(); }\n"
+                + code[close_idx:]
+            )
 
     return code + "\n" + RUNTIME_CLASS

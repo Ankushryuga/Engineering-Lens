@@ -128,6 +128,7 @@ def main():
 
         payload = {
             "job_id": job_id,
+            "hash": job.get("hash", ""),
             "steps": result["steps"],
             "error": result["error"],
             "language": LANGUAGE_FILTER,

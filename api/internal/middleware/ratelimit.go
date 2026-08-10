@@ -1,7 +1,9 @@
 package middleware
 
 import (
+	"net"
 	"net/http"
+	"strings"
 	"sync"
 
 	"golang.org/x/time/rate"
@@ -19,22 +21,39 @@ var (
 // getOrCreateLimiter returns the limiter for the given IP, creating one if needed.
 func getOrCreateLimiter(ip string, rps float64) *rate.Limiter {
 	v, _ := limiters.LoadOrStore(ip, &ipLimiter{
-		limiter: rate.NewLimiter(rate.Limit(rps), int(rps*2)),
+		limiter: rate.NewLimiter(rate.Limit(rps), burstFor(rps)),
 	})
 	return v.(*ipLimiter).limiter
+}
+
+func burstFor(rps float64) int {
+	burst := int(rps * 2)
+	if burst < 1 {
+		return 1
+	}
+	return burst
+}
+
+func clientIP(r *http.Request) string {
+	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
+		return strings.TrimSpace(strings.Split(xff, ",")[0])
+	}
+	host, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err == nil {
+		return host
+	}
+	return r.RemoteAddr
 }
 
 // RateLimit middleware enforces per-IP rate limiting.
 func RateLimit(rps float64) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			ip := r.RemoteAddr
-			if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
-				ip = xff
-			}
-			lim := getOrCreateLimiter(ip, rps)
+			lim := getOrCreateLimiter(clientIP(r), rps)
 			if !lim.Allow() {
-				http.Error(w, `{"error":"rate limit exceeded","code":429}`, http.StatusTooManyRequests)
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusTooManyRequests)
+				_, _ = w.Write([]byte(`{"error":"rate limit exceeded","code":429}`))
 				return
 			}
 			next.ServeHTTP(w, r)

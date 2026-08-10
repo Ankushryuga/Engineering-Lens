@@ -1,12 +1,15 @@
 package handlers
 
 import (
+	"errors"
 	"net/http"
+	"strconv"
 
 	"algo-visualizer/api/internal/models"
 	"algo-visualizer/api/internal/postgres"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/jackc/pgx/v5"
 )
 
 // TemplatesHandler handles the algorithm template catalog endpoints.
@@ -53,9 +56,14 @@ func (h *TemplatesHandler) HandleList(w http.ResponseWriter, r *http.Request) {
 			&t.ID, &t.Name, &t.Category, &t.Difficulty,
 			&t.TimeComplexity, &t.SpaceComplexity, &t.RenderType, &t.Languages,
 		); err != nil {
-			continue
+			writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to decode templates", Code: 500})
+			return
 		}
 		templates = append(templates, t)
+	}
+	if err := rows.Err(); err != nil {
+		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed while reading templates", Code: 500})
+		return
 	}
 
 	writeJSON(w, http.StatusOK, templates)
@@ -63,11 +71,18 @@ func (h *TemplatesHandler) HandleList(w http.ResponseWriter, r *http.Request) {
 
 // HandleSolution handles GET /api/v1/templates/:id/solution?language=.
 func (h *TemplatesHandler) HandleSolution(w http.ResponseWriter, r *http.Request) {
-	idStr := chi.URLParam(r, "id")
+	id, err := strconv.Atoi(chi.URLParam(r, "id"))
+	if err != nil || id <= 0 {
+		writeJSON(w, http.StatusBadRequest, models.ErrorResponse{Error: "template id must be a positive integer", Code: 400})
+		return
+	}
 	language := r.URL.Query().Get("language")
-
 	if language == "" {
 		language = "python"
+	}
+	if !models.SupportedLanguages[models.Language(language)] {
+		writeJSON(w, http.StatusBadRequest, models.ErrorResponse{Error: "unsupported template language", Code: 400})
+		return
 	}
 
 	query := `
@@ -81,13 +96,17 @@ func (h *TemplatesHandler) HandleSolution(w http.ResponseWriter, r *http.Request
 	`
 
 	var sol models.TemplateSolution
-	err := h.db.Pool.QueryRow(r.Context(), query, idStr, language).Scan(
+	err = h.db.Pool.QueryRow(r.Context(), query, id, language).Scan(
 		&sol.TemplateID, &sol.Name, &sol.Category, &sol.Difficulty,
 		&sol.TimeComplexity, &sol.SpaceComplexity, &sol.RenderType,
 		&sol.Language, &sol.Code,
 	)
-	if err != nil {
+	if errors.Is(err, pgx.ErrNoRows) {
 		writeJSON(w, http.StatusNotFound, models.ErrorResponse{Error: "solution not found for the given id and language", Code: 404})
+		return
+	}
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to load template solution", Code: 500})
 		return
 	}
 
