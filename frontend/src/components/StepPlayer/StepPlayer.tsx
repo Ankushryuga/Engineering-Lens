@@ -49,7 +49,11 @@ export default function StepPlayer({ totalSteps, currentStep, onStepChange, auto
     onStepChange(Math.min(totalSteps - 1, currentStep + 1))
   }
 
-  const handlePlayPause = () => setPlaying(p => !p)
+  const handlePlayPause = () => {
+    if (totalSteps <= 1) return
+    if (currentStep >= totalSteps - 1) onStepChange(0)
+    setPlaying(p => !p)
+  }
 
   return (
     <div className={styles.statusbar}>
@@ -69,7 +73,8 @@ export default function StepPlayer({ totalSteps, currentStep, onStepChange, auto
       <button
         className={styles.iconBtn + ' ' + styles.playBtn}
         onClick={handlePlayPause}
-        aria-label={playing ? 'pause' : 'play'}
+        aria-label={playing ? 'pause' : currentStep >= totalSteps - 1 ? 'replay from start' : 'play'}
+        disabled={totalSteps <= 1}
       >
         {playing ? (
           <svg width="10" height="10" viewBox="0 0 10 10">
@@ -125,7 +130,8 @@ export default function StepPlayer({ totalSteps, currentStep, onStepChange, auto
           max={10}
           value={speed}
           onChange={e => setSpeed(Number(e.target.value))}
-          style={{ width: 70, accentColor: 'var(--accent)' }}
+          className={styles.speedRange}
+          aria-label="playback speed"
         />
       </div>
     </div>

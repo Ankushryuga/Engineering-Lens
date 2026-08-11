@@ -826,13 +826,14 @@ export const SCENARIOS: Record<string, ScenarioDefinition> = {
     "category": "Linked Lists"
   },
   "Dijkstra's Shortest Path": {
-    "icon": "🚗",
-    "title": "Finding the Fastest Drive Across Town",
-    "sub": "Always expand the closest place whose best travel time is already known",
-    "blurb": "A navigation app starts at home and keeps a best-known travel time to every nearby place. It permanently settles the closest unfinished place, then checks whether going through it creates a faster route to its neighbours. Repeating that process gives the shortest route when all road costs are non-negative.",
+    "icon": "🚚",
+    "title": "Delivery Route Finder",
+    "sub": "Find the cheapest delivery route from the dispatch hub to the customer",
+    "blurb": "The city is a weighted grid: buildings cannot be crossed, clear blocks cost 1, and traffic blocks cost more. Dijkstra always settles the reachable block with the cheapest known travel cost, then checks whether moving through it gives neighbouring blocks a cheaper route. The green route is therefore chosen by total travel cost, not simply by drawing the straightest line.",
     "irl": [
-      { "icon": "🚗", "text": "GPS shortest-route planning" },
-      { "icon": "📦", "text": "Cheapest delivery path through a network" }
+      { "icon": "🚚", "text": "Last-mile delivery route planning" },
+      { "icon": "🗺️", "text": "GPS shortest-route planning" },
+      { "icon": "🌐", "text": "Lowest-cost network routing" }
     ],
     "category": "Graphs"
   },

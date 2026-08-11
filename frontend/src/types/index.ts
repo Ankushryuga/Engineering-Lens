@@ -1,10 +1,10 @@
 // ── API types ──────────────────────────────────────────────────────────────────
 
-export type Language = 'python' | 'javascript' | 'go' | 'java' | 'cpp'
+export type Language = 'python' | 'go'
 
 export interface Step {
   type: 'compare' | 'swap' | 'set' | 'visit' | 'done' | 'call' | 'return' | 'highlight'
-    | 'graph_init' | 'relax' | 'path' | 'tree_init' | 'list_init'
+    | 'graph_init' | 'relax' | 'path' | 'tree_init' | 'list_init' | 'grid_init'
   indices?: number[]
   array?: (number | string)[]
   line?: number
@@ -23,6 +23,15 @@ export interface Step {
   lists?: Record<string, string[]>
   pointers?: Record<string, string | null>
   merged?: string[]
+  // Weighted-grid pathfinding fields (Dijkstra / A* Story mode)
+  grid?: number[][]
+  start_cell?: [number, number]
+  goal_cell?: [number, number]
+  cell?: [number, number]
+  from_cell?: [number, number]
+  to_cell?: [number, number]
+  cell_cost?: number
+  grid_path?: [number, number][]
 }
 
 export type RenderType = 'array' | 'graph' | 'tree' | 'linked_list'
@@ -87,33 +96,12 @@ export const LANGUAGES: Record<Language, LangMeta> = {
     status: 'stable',
     runtime: '3.11 · sys.settrace()',
   },
-  javascript: {
-    label: 'JavaScript',
-    monacoLang: 'javascript',
-    filename: 'solution.js',
-    status: 'stable',
-    runtime: 'Node 20 · source instrumentation',
-  },
   go: {
     label: 'Go',
     monacoLang: 'go',
     filename: 'solution.go',
     status: 'stable',
-    runtime: '1.22 · source instrumentation',
-  },
-  java: {
-    label: 'Java',
-    monacoLang: 'java',
-    filename: 'Solution.java',
-    status: 'stable',
-    runtime: 'OpenJDK 21 · compiled in-container',
-  },
-  cpp: {
-    label: 'C / C++',
-    monacoLang: 'cpp',
-    filename: 'solution.cpp',
-    status: 'beta',
-    runtime: 'GCC 13 (C++20)',
+    runtime: '1.24 · source instrumentation',
   },
 }
 

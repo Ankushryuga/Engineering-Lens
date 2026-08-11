@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import styles from './DocsPage.module.css'
+import { LANGUAGE_LIST } from '@/types'
 
 export default function DocsPage() {
   return (
@@ -27,34 +28,28 @@ export default function DocsPage() {
       {/* Content */}
       <main className={styles.content}>
         <section id="overview">
-          <h1>algo-visualizer</h1>
+          <h1>AlgoWeave</h1>
           <p>
-            algo-visualizer is an interactive algorithm step-player. Paste any function
-            in one of the five supported languages, click Run, and inspect every
-            comparison, swap, and recursive call as a reproducible, seekable sequence of
-            steps — without writing any instrumentation code yourself.
+            AlgoWeave is an interactive algorithm learning lab. Start from a guided real-world
+            Story view or run your own code, then inspect the same execution as a reproducible,
+            seekable trace. Explanations and source code are optional layers so the concept can
+            stay visible before implementation detail takes over.
           </p>
           <p>
-            Alternatively, pick a canonical algorithm from the built-in catalog and run
-            it against the same engine. The catalog and the custom-code path share the
-            same sandbox, the same step format, and the same player.
+            The guided catalog and custom-code path share the same sandbox, normalized step
+            format, and player. The bundled catalog contains 55 canonical lessons across all 11
+            DSA categories, with both Python and Go reference solutions for every lesson.
           </p>
         </section>
 
         <section id="first-run">
           <h2>Your first run</h2>
           <ol className={styles.steps}>
-            <li>Open the <Link to="/app">app</Link>.</li>
-            <li>Choose a language in the left sidebar.</li>
-            <li>
-              Either pick an algorithm from the <strong>Algorithm templates</strong>{' '}
-              dropdown, or paste your own code into the editor.
-            </li>
-            <li>Click <strong>Run</strong>. Your code executes in an isolated sandbox.</li>
-            <li>
-              Use the step player at the bottom to play, pause, step forward/back, and
-              scrub through the visualization.
-            </li>
+            <li>Open <Link to="/app?mode=guided">Guided lessons</Link> or the <Link to="/app?mode=custom">custom-code lab</Link>.</li>
+            <li>For a guided lesson, search the catalog and choose an algorithm card.</li>
+            <li>Click <strong>Run &amp; visualize</strong>. Source code stays hidden unless you choose <strong>Show source code</strong>.</li>
+            <li>Use the player above the visualization to play, pause, step forward/back, and scrub through the trace.</li>
+            <li>Enable <strong>Explain how it works</strong> to see what the current step is doing, why it happens, and what changed.</li>
           </ol>
         </section>
 
@@ -67,11 +62,13 @@ export default function DocsPage() {
           </p>
           <div className={styles.codeBlock}>
 {`{
-  "type":    "compare" | "swap" | "set" | "visit" | "done" | "call" | "return",
+  "type":    "compare" | "swap" | "set" | "visit" | "relax" | "path" | "done" | ... ,
   "indices": [1, 2],          // element positions involved (optional)
   "array":   [5, 3, 8, 1],   // full array state at this step (optional)
   "line":    5,               // source line that produced this step (optional)
-  "info":    "comparing arr[1] and arr[2]"  // human-readable message (optional)
+  "info":    "comparing arr[1] and arr[2]", // human-readable message (optional)
+  "grid":    [[1, 1, -1], ...],             // pathfinding state when relevant
+  "cell":    [7, 12]                         // current grid cell when relevant
 }`}
           </div>
         </section>
@@ -79,10 +76,10 @@ export default function DocsPage() {
         <section id="languages">
           <h2>Language support</h2>
           <p>
-            All five runtimes normalise to the same <code>steps[]</code> output, so the
-            player and every other surface stay identical regardless of what you paste.
+            Python and Go both normalise to the same <code>steps[]</code> output, so the
+            player and every other learning surface use the same execution contract.
           </p>
-          <table className={styles.table}>
+          <div className={styles.tableScroll}><table className={styles.table}>
             <thead>
               <tr>
                 <th>Language</th>
@@ -92,43 +89,37 @@ export default function DocsPage() {
               </tr>
             </thead>
             <tbody>
-              {[
-                ['Python', '3.11', 'sys.settrace() line-level trace', 'stable'],
-                ['JavaScript', 'Node 20', 'Source-level instrumentation', 'stable'],
-                ['Go', '1.22', 'Build + source-level instrumentation', 'stable'],
-                ['Java', 'OpenJDK 21', 'Compiled then run in-container', 'stable'],
-                ['C / C++', 'GCC 13 (C++20)', 'Compiled then run in-container', 'beta'],
-              ].map(([lang, rt, model, status]) => (
-                <tr key={lang}>
-                  <td>{lang}</td>
-                  <td><code>{rt}</code></td>
-                  <td>{model}</td>
+              {LANGUAGE_LIST.map(([key, meta]) => (
+                <tr key={key}>
+                  <td>{meta.label}</td>
+                  <td><code>{meta.runtime.split(' · ')[0]}</code></td>
+                  <td>{meta.runtime.split(' · ').slice(1).join(' · ') || 'Sandboxed execution'}</td>
                   <td>
-                    <span className={styles.chip + ' ' + (status === 'beta' ? styles.beta : styles.stable)}>
-                      {status}
+                    <span className={styles.chip + ' ' + (meta.status === 'beta' ? styles.beta : styles.stable)}>
+                      {meta.status}
                     </span>
                   </td>
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></div>
         </section>
 
         <section id="sandbox">
           <h2>Sandbox &amp; safety</h2>
           <p>
-            Each language runs in its own Docker image. Sandboxes are configured with:
+            Python and Go each run in their own Docker image. Sandboxes are configured with:
           </p>
           <ul className={styles.list}>
             <li>No outbound network access (workers are attached only to an internal Kafka network)</li>
-            <li>Hard wall-clock timeout (10 s interpreted, 20 s compiled)</li>
-            <li>Memory cap (128 MB interpreted, 256 MB compiled)</li>
+            <li>Hard wall-clock timeout (10 s for Python, 20 s for Go)</li>
+            <li>Memory cap (128 MB for Python, 256 MB for Go)</li>
             <li>Read-only filesystem except a per-job scratch directory</li>
             <li>Non-root user inside the container</li>
           </ul>
           <p>
             Additionally, a static pre-check rejects obviously malicious patterns
-            (e.g. <code>os.system</code> in Python, <code>child_process</code> in JS)
+            (e.g. <code>os.system</code> in Python and <code>os/exec</code> in Go)
             before code reaches the sandbox. This is defense-in-depth, not a
             replacement for the container isolation.
           </p>
@@ -137,12 +128,12 @@ export default function DocsPage() {
         <section id="catalog">
           <h2>Algorithm catalog</h2>
           <p>
-            The catalog contains ~50 canonical, team-authored algorithms across 11
+            The catalog contains 55 canonical, team-authored algorithms across 11
             categories. Every entry stores: name, category, difficulty tier
             (Fundamental / Intermediate / Advanced), time and space complexity, and
-            reference solutions, with Python coverage across the full catalog and other languages being backfilled.
+            reference solutions. Every guided lesson ships in both Python and Go, and the custom-code path intentionally supports those same two runtimes only.
           </p>
-          <table className={styles.table}>
+          <div className={styles.tableScroll}><table className={styles.table}>
             <thead>
               <tr>
                 <th>Category</th>
@@ -169,7 +160,7 @@ export default function DocsPage() {
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></div>
         </section>
 
         <section id="api">

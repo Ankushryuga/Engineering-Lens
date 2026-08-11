@@ -1,15 +1,22 @@
-# algo-visualizer
+# AlgoWeave — algorithm visualizer for students
 
-Step through exactly how your algorithm executes.
+Learn the **idea first, then the code**.
 
-Paste a function in Python, Go, Java, JavaScript, or C++, run it in an
-isolated sandbox, and inspect its normalized execution steps as a reproducible,
-seekable sequence — or pick one of ~55 canonical, team-authored algorithms
-from the built-in catalog. The visualization defaults to a **real-world lens**
-(packages, maps, trains, queues, schedules, puzzles, and more) and can be
-toggled back to the underlying abstract data structure at any time.
+AlgoWeave turns classic DSA algorithms into familiar real-life stories — warehouse
+loading, dictionary lookup, GPS routing, hospital triage, scheduling, packing,
+puzzles, text search, and more. Students can play/pause the actual sandboxed
+execution, optionally enable **Explain how it works** for synchronized teaching notes,
+and then switch to **Abstract** view to connect the analogy back to arrays, graphs,
+trees, linked lists, or the source-line execution trace. Source code is hidden by
+default and can be revealed on demand with **Show source code**.
+
+The product intentionally supports **Python and Go only**. Both custom-code mode
+and every guided lesson use the same two runtimes, and all 55 canonical algorithms
+ship with reference solutions in both languages.
 
 Full product design and rationale live in [`requirement_doc.md`](./requirement_doc.md).
+
+Current UI/brand release: **AlgoWeave v17**. The project uses a synchronized responsive shell/sidebar breakpoint so intermediate laptop widths do not fall into a mixed desktop/tablet layout. See [`V17_ALGOWEAVE_RESPONSIVE_RENAME.md`](./V17_ALGOWEAVE_RESPONSIVE_RENAME.md).
 
 ---
 
@@ -31,7 +38,7 @@ Full product design and rationale live in [`requirement_doc.md`](./requirement_d
 ## Architecture
 
 ```
-React frontend (Monaco editor + step player + language selector + algorithm dropdown)
+React student learning lab (lesson library + story visualizer + Monaco editor + step player)
         │  HTTPS/REST + WebSocket
         │
         ├─── GET /api/v1/templates?category=&difficulty=   (catalog lookup)
@@ -55,10 +62,9 @@ React frontend (Monaco editor + step player + language selector + algorithm drop
              Go API streams result to frontend (WebSocket, with long-poll fallback)
 ```
 
-Each language (Python, Go, Java, JavaScript, C/C++) has its own Docker image
-and Kafka consumer group, so a slow compiled-language job never competes with
-an interpreted one for the same worker pool, and each pool scales/tunes
-independently.
+Python and Go each have their own Docker image and Kafka consumer group, so
+compiled Go jobs never compete with Python jobs for the same worker pool and
+each runtime can be scaled/tuned independently.
 
 ## Tech stack
 
@@ -66,7 +72,7 @@ independently.
 |---|---|
 | Frontend | React 18 + TypeScript, Vite, Monaco Editor |
 | API | Go (chi router, REST + WebSocket) |
-| Execution sandboxes | Docker — one image per language (Python 3.11, Node 20, Go 1.24, OpenJDK 21, GCC 13) |
+| Execution sandboxes | Docker — Python 3.11 and Go 1.24 worker images |
 | Messaging | Apache Kafka (`visualize-jobs` / `visualize-results` topics) |
 | Cache | Redis (keyed by hash of code + language) |
 | Catalog storage | PostgreSQL |
@@ -92,16 +98,13 @@ See `requirement_doc.md` §3.3 for the full stack rationale.
 │       ├── postgres/    catalog DB client
 │       ├── middleware/  CORS, rate limiting
 │       └── validator/   request validation + static deny-pattern checks
-├── sandbox/             One Docker image + worker per language
+├── sandbox/             One Docker image + worker per supported language
 │   ├── python/          worker.py (Kafka) + tracer.py (sys.settrace)
-│   ├── javascript/      worker.js (Kafka) + tracer.js (vm + source instrumentation)
-│   ├── golang/          worker.go (Kafka) + instrument.go (source instrumentation)
-│   ├── java/            worker.py (Kafka) + instrument.py (source instrumentation)
-│   └── cpp/             worker.py (Kafka) + instrument.py (source instrumentation, beta)
+│   └── golang/          worker.go (Kafka) + instrument.go (source instrumentation)
 ├── catalog/             Postgres schema + ~55 seeded reference solutions
 │   ├── schema.sql
 │   └── seeds/algorithms.sql
-├── docker-compose.yml    Full local stack: Kafka, Redis, Postgres, API, 5 sandboxes, frontend
+├── docker-compose.yml    Full local stack: Kafka, Redis, Postgres, API, Python/Go sandboxes, frontend
 └── requirement_doc.md    Design & requirements doc (source of truth for scope)
 ```
 
@@ -114,6 +117,8 @@ git clone <this-repo>
 cd Algo-Visualizer
 # Optional for Compose overrides; useful as a reference for local API settings:
 # cp .env.example .env
+docker compose down --remove-orphans
+# --remove-orphans cleans old JavaScript/Java/C++ workers left by releases before v13.
 docker compose up --build
 ```
 
@@ -122,16 +127,18 @@ This brings up:
 - Redis
 - Postgres (auto-seeded from `catalog/schema.sql` + `catalog/seeds/algorithms.sql`)
 - The Go API on `http://localhost:8080`
-- All five sandbox worker pools (Python, JavaScript, Go, Java, C++)
+- Python and Go sandbox worker pools
 - The frontend dev server on `http://localhost:5173`
 
-Open **http://localhost:5173** — you'll land on the landing page; click
-**Open app** to reach the editor + visualization panel.
+Open **http://localhost:5173** — choose **Open learning lab**, pick a guided lesson,
+and run it. Story mode is the default. Source code stays hidden until **Show source
+code** is selected, and **Explain how it works** adds step-synchronized explanations.
+Abstract mode remains available beside Story mode.
 
 To stop everything:
 
 ```bash
-docker compose down
+docker compose down --remove-orphans
 ```
 
 To also drop the Postgres volume (re-seed the catalog from scratch):
@@ -139,6 +146,43 @@ To also drop the Postgres volume (re-seed the catalog from scratch):
 ```bash
 docker compose down -v
 ```
+
+
+### Host ports
+
+Compose keeps service-to-service ports unchanged inside Docker. Host mappings are:
+
+- Frontend: `localhost:5173`
+- API: `localhost:8080`
+- PostgreSQL: `localhost:5433` → container `5432` (override with `POSTGRES_HOST_PORT`)
+- Redis: `localhost:6380` → container `6379`
+- Kafka: `localhost:29094`
+
+The PostgreSQL host port intentionally defaults to **5433** so a locally installed
+PostgreSQL server on the standard `5432` port does not block `docker compose up`.
+
+### Verify all guided lessons
+
+Without Docker, you can smoke-test every seeded Python lesson through the actual
+tracer used by the sandbox:
+
+```bash
+python3 scripts/verify_catalog.py
+```
+
+The command must report all 55 lessons as `PASS`. Some lessons emit rich structured
+state; the rest deliberately use the student learning-timeline renderer rather than
+showing an empty graph/array.
+
+To verify the Go worker transformation and make sure every canonical Go lesson
+produces a usable multi-step trace:
+
+```bash
+python3 scripts/verify_go_runtime.py
+```
+
+That check compiles and executes all 55 Go references after applying the same
+source instrumentation used by `sandbox-go`.
 
 ## Running locally without Docker
 
@@ -154,7 +198,7 @@ npm run dev
 **API** (using Postgres/Redis/Kafka from `docker compose up postgres redis kafka zookeeper`)
 ```bash
 cd api
-POSTGRES_DSN='postgres://algo:algo_secret@localhost:5432/algo_visualizer?sslmode=disable' \
+POSTGRES_DSN='postgres://algo:algo_secret@localhost:5433/algo_visualizer?sslmode=disable' \
 REDIS_ADDR=localhost:6380 \
 KAFKA_BROKERS=localhost:29094 \
 go run ./cmd/server
@@ -214,23 +258,19 @@ third-party problem platform in the loop (see `requirement_doc.md` §3.6):
 | Strings | KMP, Rabin-Karp, Z-Algorithm, Longest Palindromic Substring |
 | Math & Bit Manipulation | Sieve of Eratosthenes, GCD/LCM, Fast Exponentiation, Bit basics |
 
-Every entry currently ships a Python reference solution; additional language
-coverage is being backfilled per entry (see [Roadmap](#roadmap)). Every one of
-the 55 catalog entries also has a concrete real-world scenario used by the
-default visualization lens.
+Every one of the 55 catalog entries ships with both a Python and a Go reference
+solution. Every entry also has a concrete real-world scenario used by the default
+visualization lens.
 
 ## Language support & sandbox notes
 
 | Language | Runtime | Status | Instrumentation approach |
 |---|---|---|---|
 | Python | 3.11 | Stable | `sys.settrace()` — dynamic line-level tracing |
-| JavaScript | Node 20 | Stable | Source-level instrumentation (see trade-offs below) |
-| Go | 1.22 | Stable | Source-level instrumentation, compiled via `go run` |
-| Java | OpenJDK 21 | Stable | Source-level instrumentation, compiled via `javac`/`java` |
-| C / C++ | GCC 13 (C++20) | Beta | Source-level instrumentation, compiled via `g++` |
+| Go | 1.24 | Stable | Source-level instrumentation, compiled via `go run` |
 
-All five normalize to the same `steps[]` JSON shape, so the frontend player
-is fully language-agnostic:
+Both runtimes normalize to the same `steps[]` JSON shape, so the frontend player
+is language-agnostic:
 
 ```jsonc
 {
@@ -241,13 +281,11 @@ is fully language-agnostic:
 }
 ```
 
-Every sandbox worker is attached only to an **internal Kafka network**, with
-no outbound internet path. Workers also use a read-only root filesystem,
-`/tmp` scratch space, PID/CPU/memory caps, `no-new-privileges`, a hard
-wall-clock timeout (10s interpreted / 20s compiled), and a non-root user. A
-static pre-check also rejects obviously dangerous patterns (`os.system`,
-`child_process`, `Runtime.exec`, etc.) before code reaches the sandbox, as
-defense-in-depth — not a replacement for the container isolation itself.
+Both sandbox workers are attached only to an **internal Kafka network**, with no
+outbound internet path. Workers use a read-only root filesystem, `/tmp` scratch
+space, PID/CPU/memory caps, `no-new-privileges`, hard wall-clock timeouts, and a
+non-root user. Static pre-checks reject obviously dangerous patterns such as
+`os.system` in Python and `os/exec` in Go before code reaches the sandbox.
 
 ## Known limitations / trade-offs
 
@@ -262,24 +300,19 @@ discussion):
   the player remains seekable without fabricating algorithm state. Arbitrary
   custom nested structures (for example a user-written DP table) still need
   richer `renderType`-aware tracing to visualize their internal values.
-- **JavaScript uses source instrumentation, not the V8 inspector protocol**
-  described in the original design doc. A true debugger-level trace via the
-  inspector protocol was descoped in favor of shipping a working, consistent
-  instrumentation strategy across all five languages within v1.
 - **Per-job isolation is at the worker-pool level, not per-container.** Each
   language has its own long-lived Docker image/worker pool (as described in
   `requirement_doc.md` §3.2), rather than spinning up a fresh container per
   submitted job. This matches the documented architecture but is a lighter
   isolation boundary than one-container-per-job.
-- **Catalog language coverage is Python-only at launch.** The requirement
-  doc explicitly allows "1–2 languages per algorithm... with the rest
-  backfilled later" (§3.8) — Python covers all ~55 entries today.
+- **Go tracing is intentionally lighter than Python tracing for arbitrary custom code.**
+  Canonical Go catalog solutions are fully available, but rich structure-specific
+  tracing still depends on what the source-level Go instrumenter can observe.
 
 ## Roadmap
 
 Per `requirement_doc.md` §3.4/§3.7:
 
-- [ ] Backfill JavaScript/Go/Java/C++ reference solutions across the catalog
 - [ ] Expand custom-code tracing beyond flat-array heuristics (DP tables and richer structures)
 - [ ] Recursion tree / call-stack visualization
 - [ ] Shareable visualization links
@@ -290,3 +323,11 @@ Per `requirement_doc.md` §3.4/§3.7:
 ## License
 
 See [`LICENSE`](./LICENSE).
+
+### v8 weighted Pathfinder compatibility note
+
+Dijkstra and A* use a trace-driven 15×26 weighted city-grid visualization in Story mode. The original `UI mockup files/pathfinding-grid.html` is only a design reference and is not imported or read at runtime. Existing PostgreSQL volumes are upgraded by the one-shot `catalog-migrate` service, so upgrading no longer requires deleting `postgres_data`. Older graph-format Dijkstra results remain renderable through the compatible Delivery Route view instead of producing a blank panel.
+
+### v9 pathfinder / phone UI note
+
+The weighted-grid Pathfinder now distinguishes geometric route length from weighted travel cost and visually fades exploration noise after the final route is confirmed. On tablet/phone widths, AlgoWeave uses a sticky top bar and off-canvas navigation drawer instead of compressing or hiding the sidebar. See `V9_CORRECTNESS_RESPONSIVE.md`.

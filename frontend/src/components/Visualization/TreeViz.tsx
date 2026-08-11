@@ -99,7 +99,7 @@ export default function TreeViz({ step, allSteps, currentIndex }: TreeVizProps) 
     return map
   }, [state.edges])
 
-  const layout = useMemo(() => {
+  const layout: Map<string, LayoutNode> = useMemo(() => {
     if (!state.root) return new Map<string, LayoutNode>()
     return computeTreeLayout(state.root, children, WIDTH)
   }, [state.root, children])
@@ -179,7 +179,7 @@ export default function TreeViz({ step, allSteps, currentIndex }: TreeVizProps) 
         <span><span className={styles.dotPath} /> result path</span>
       </div>
 
-      {step && <div className={styles.status}>{step.info}</div>}
+      {step?.info ? <div className={styles.status}>{step.info}</div> : null}
     </div>
   )
 }

@@ -1,4 +1,4 @@
-module algo-visualizer/api
+module algoweave/api
 
 go 1.24
 

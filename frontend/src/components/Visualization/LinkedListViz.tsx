@@ -147,8 +147,8 @@ export default function LinkedListViz({ step, allSteps, currentIndex }: LinkedLi
             nodeIds={state.merged}
             next={{}}
             pointers={{}}
-            visitedSet={new Set()}
-            pathSet={isPathStep ? pathSet : new Set()}
+            visitedSet={new Set<string>()}
+            pathSet={isPathStep ? pathSet : new Set<string>()}
           />
         )}
 
@@ -170,7 +170,7 @@ export default function LinkedListViz({ step, allSteps, currentIndex }: LinkedLi
         <span><span className={styles.dotPath} /> result order</span>
       </div>
 
-      {step && <div className={styles.status}>{step.info}</div>}
+      {step?.info ? <div className={styles.status}>{step.info}</div> : null}
     </div>
   )
 }

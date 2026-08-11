@@ -1,5 +1,8 @@
 # Algorithm Visualizer Platform — Design & Requirements Doc
 
+> **Current scope amendment (v13):** The shipping product intentionally supports **Python and Go only**. JavaScript, Java, and C/C++ have been removed from the UI, API allow-list, Docker Compose stack, and catalog language constraint. Every guided algorithm now has both Python and Go reference solutions. Historical language-expansion notes below describe the original plan and are superseded by this amendment.
+
+
 ## 1. Why
 
 ### Problem

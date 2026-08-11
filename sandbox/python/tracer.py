@@ -1,6 +1,6 @@
 """
 tracer.py — Instruments and executes untrusted Python code, emitting a
-normalized steps[] trace compatible with the algo-visualizer frontend.
+normalized steps[] trace compatible with the AlgoWeave frontend.
 
 Approach (documented trade-off, see requirement_doc.md §3.2 / §3.8):
   We use sys.settrace() to observe line execution and local variable state.
@@ -49,7 +49,7 @@ class Tracer:
     def _find_subject_array(self, frame: types.FrameType) -> Optional[str]:
         """Pick the first local variable that looks like a numeric list."""
         for name, val in frame.f_locals.items():
-            if isinstance(val, list) and val and all(
+            if isinstance(val, list) and all(
                 isinstance(x, (int, float)) for x in val
             ):
                 return name
@@ -84,7 +84,16 @@ class Tracer:
             self.steps.append(step)
 
     def _diff_and_emit_mutation(self, before: list, after: list, line_no: int):
-        if before is None or after is None or len(before) != len(after):
+        if before is None or after is None:
+            return
+        if len(before) != len(after):
+            self._emit({
+                "type": "set",
+                "indices": [max(len(after) - 1, 0)] if after else [],
+                "array": after,
+                "line": line_no,
+                "info": f"list size changed from {len(before)} to {len(after)}",
+            })
             return
         changed = [i for i in range(len(before)) if before[i] != after[i]]
         if len(changed) == 2:
@@ -148,13 +157,18 @@ class Tracer:
                 src = self.source_lines[line_no - 1]
                 if any(op in src for op in (">", "<", ">=", "<=", "==")) and self.subject_name:
                     indices = self._resolve_indices(src, frame)
-                    if len(indices) >= 2:
+                    if len(indices) >= 1:
+                        compared = indices[:2]
+                        if len(compared) == 1:
+                            info = f"checking arr[{compared[0]}] against the target or condition"
+                        else:
+                            info = f"comparing arr[{compared[0]}] and arr[{compared[1]}]"
                         self._emit({
                             "type": "compare",
-                            "indices": indices[:2],
+                            "indices": compared,
                             "array": current_snapshot,
                             "line": line_no,
-                            "info": f"comparing arr[{indices[0]}] and arr[{indices[1]}]",
+                            "info": info,
                         })
 
             self.prev_snapshot = current_snapshot

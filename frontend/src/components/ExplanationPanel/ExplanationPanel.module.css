@@ -1,0 +1,86 @@
+.root {
+  min-width: 0;
+  height: 100%;
+  overflow-y: auto;
+  padding: clamp(12px, 1.5vw, 18px);
+  background: var(--surface);
+  border-left: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+}
+
+.head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.head > div { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.head strong { color: var(--text); font-size: 13px; line-height: 1.35; }
+.eyebrow { color: var(--accent-soft); font-size: 8.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; }
+.progress { flex: 0 0 auto; padding: 5px 7px; border-radius: 999px; background: var(--accent-dim); color: var(--accent-soft); font: 8.5px var(--mono); }
+
+.overview,.reason,.question,.liveCard {
+  border: 1px solid var(--border);
+  border-radius: 13px;
+  background: var(--surface-2);
+  padding: 11px 12px;
+}
+
+.overview > span,.reason > span,.question > span {
+  display: block;
+  margin-bottom: 5px;
+  color: var(--text-muted);
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+}
+
+.overview p,.reason p,.question p,.explainRows p {
+  color: var(--text-secondary);
+  font-size: 10px;
+  line-height: 1.55;
+}
+
+.liveCard { border-color: var(--accent-border); background: color-mix(in srgb, var(--accent-dim) 42%, var(--surface-2)); }
+.liveTitle { display: flex; align-items: center; gap: 7px; margin-bottom: 8px; }
+.liveTitle strong { color: var(--text); font-size: 10.5px; }
+.liveDot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 4px var(--accent-dim); }
+
+.explainRows { display: grid; gap: 7px; }
+.explainRows > div { display: grid; grid-template-columns: 48px minmax(0, 1fr); gap: 8px; align-items: start; }
+.explainRows span { color: var(--accent-soft); font-size: 8px; font-weight: 800; text-transform: uppercase; letter-spacing: .05em; padding-top: 2px; }
+
+.question { background: var(--accent-dim); border-color: var(--accent-border); }
+.question p { color: var(--text); }
+
+.sourceHint {
+  padding: 9px 10px;
+  border-radius: 10px;
+  border: 1px dashed var(--border-strong);
+  color: var(--text-muted);
+  font-size: 8.5px;
+  line-height: 1.5;
+}
+
+@media (max-width: 1180px) {
+  .root {
+    height: auto;
+    max-height: none;
+    border-left: 0;
+    border-top: 1px solid var(--border);
+  }
+  .explainRows { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .explainRows > div { display: block; }
+  .explainRows span { display: block; margin-bottom: 3px; }
+}
+
+@media (max-width: 720px) {
+  .root { padding: 11px; gap: 8px; }
+  .explainRows { grid-template-columns: 1fr; }
+  .overview,.reason,.question,.liveCard { padding: 10px; }
+  .overview p,.reason p,.question p,.explainRows p { font-size: 9.5px; }
+}

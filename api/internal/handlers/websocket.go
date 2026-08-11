@@ -6,8 +6,8 @@ import (
 	"net/http"
 	"time"
 
-	"algo-visualizer/api/internal/models"
-	redisclient "algo-visualizer/api/internal/redis"
+	"algoweave/api/internal/models"
+	redisclient "algoweave/api/internal/redis"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"

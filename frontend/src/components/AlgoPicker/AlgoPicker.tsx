@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import { Language, Template } from '@/types'
+import { useEffect, useMemo, useState } from 'react'
+import { Language, Template, LANGUAGES } from '@/types'
 import { fetchTemplates } from '@/lib/api'
 import styles from './AlgoPicker.module.css'
 
@@ -10,10 +10,16 @@ interface AlgoPickerProps {
 
 const DIFFICULTIES = ['Fundamental', 'Intermediate', 'Advanced'] as const
 
+function difficultyIcon(difficulty: string) {
+  if (difficulty === 'Fundamental') return '🌱'
+  if (difficulty === 'Intermediate') return '🧩'
+  return '🚀'
+}
+
 export default function AlgoPicker({ language, onSelect }: AlgoPickerProps) {
   const [templates, setTemplates] = useState<Template[]>([])
-  const [selectedId, setSelectedId] = useState<number | null>(null)
   const [difficulty, setDifficulty] = useState('')
+  const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState('')
 
@@ -28,7 +34,7 @@ export default function AlgoPicker({ language, onSelect }: AlgoPickerProps) {
       .catch(() => {
         if (!active) return
         setTemplates([])
-        setLoadError('Could not load the algorithm catalog. Check the API and try again.')
+        setLoadError('Could not load lessons. Check the API and try again.')
       })
       .finally(() => {
         if (active) setLoading(false)
@@ -38,62 +44,80 @@ export default function AlgoPicker({ language, onSelect }: AlgoPickerProps) {
     }
   }, [difficulty])
 
-  // Group by category
-  const grouped = templates.reduce<Record<string, Template[]>>((acc, t) => {
-    if (!acc[t.category]) acc[t.category] = []
-    acc[t.category].push(t)
-    return acc
-  }, {})
-
-  const handleSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const id = Number(e.target.value)
-    const template = templates.find(t => t.id === id)
-    if (template) {
-      setSelectedId(id)
-      onSelect(template)
-    }
-  }
-
-  const availableForLang = templates.filter(t => t.languages.includes(language)).length
+  const visible = useMemo(() => {
+    const q = search.trim().toLowerCase()
+    if (!q) return templates
+    return templates.filter(template =>
+      template.name.toLowerCase().includes(q) || template.category.toLowerCase().includes(q)
+    )
+  }, [templates, search])
 
   return (
-    <div className={styles.picker}>
-      <label className={styles.label}>Algorithm</label>
-      <select
-        className={styles.select}
-        value={selectedId ?? ''}
-        onChange={handleSelect}
-        disabled={loading}
-      >
-        <option value="">Select an algorithm...</option>
-        {Object.entries(grouped).map(([category, items]) => (
-          <optgroup key={category} label={category}>
-            {items.map(t => (
-              <option key={t.id} value={t.id} disabled={!t.languages.includes(language)}>
-                {t.name}
-                {!t.languages.includes(language) ? ' (not available in selected language)' : ''}
-              </option>
-            ))}
-          </optgroup>
-        ))}
-      </select>
+    <section className={styles.picker} aria-label="Algorithm lesson library">
+      <div className={styles.toolbar}>
+        <div className={styles.libraryTitle}>
+          <div className={styles.titleLine}>
+            <h3>Algorithm library</h3>
+            <span className={styles.count}>{loading ? '…' : visible.length}</span>
+          </div>
+          <p>Visualization is shared across Python and Go. Source shown in {LANGUAGES[language].label}.</p>
+        </div>
 
-      <div className={styles.row}>
-        <select
-          className={styles.select}
-          value={difficulty}
-          onChange={e => setDifficulty(e.target.value)}
-        >
-          <option value="">Difficulty: any</option>
-          {DIFFICULTIES.map(d => (
-            <option key={d} value={d}>{d}</option>
+        <label className={styles.searchWrap}>
+          <span className={styles.searchIcon}>⌕</span>
+          <input
+            className={styles.search}
+            value={search}
+            onChange={event => setSearch(event.target.value)}
+            placeholder="Search algorithms or categories"
+            aria-label="Search lessons"
+          />
+        </label>
+      </div>
+
+      <div className={styles.filterRow}>
+        <span className={styles.filterLabel}>Difficulty</span>
+        <div className={styles.filters} aria-label="Difficulty filter">
+          <button type="button" className={!difficulty ? styles.filterActive : styles.filter} onClick={() => setDifficulty('')}>All</button>
+          {DIFFICULTIES.map(item => (
+            <button
+              type="button"
+              key={item}
+              className={difficulty === item ? styles.filterActive : styles.filter}
+              onClick={() => setDifficulty(item)}
+            >
+              {difficultyIcon(item)} {item}
+            </button>
           ))}
-        </select>
+        </div>
       </div>
 
-      <div className={loadError ? styles.error : styles.count}>
-        {loadError || (loading ? 'loading...' : `${availableForLang} algorithms available in ${language}`)}
-      </div>
-    </div>
+      {loadError ? (
+        <div className={styles.error}>{loadError}</div>
+      ) : loading ? (
+        <div className={styles.loading}>Loading lessons…</div>
+      ) : visible.length === 0 ? (
+        <div className={styles.loading}>No lessons match your search.</div>
+      ) : (
+        <div className={styles.lessonGrid}>
+          {visible.map(template => (
+            <button type="button" key={template.id} className={styles.lessonCard} onClick={() => onSelect(template)}>
+              <div className={styles.cardMain}>
+                <div className={styles.cardTop}>
+                  <span className={styles.category}>{template.category}</span>
+                  <span className={styles.difficulty}>{difficultyIcon(template.difficulty)} {template.difficulty}</span>
+                </div>
+                <strong>{template.name}</strong>
+                <div className={styles.cardMeta}>
+                  <span>{template.time_complexity}</span>
+                  <span>{template.space_complexity}</span>
+                </div>
+              </div>
+              <span className={styles.openLesson} aria-hidden="true">→</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </section>
   )
 }

@@ -176,3 +176,19 @@
     display: none;
   }
 }
+
+.content { min-width: 0; }
+.tableScroll { width: 100%; overflow-x: auto; overscroll-behavior-inline: contain; }
+.table { min-width: 620px; }
+
+@media (max-width: 900px) {
+  .content { max-width: none; padding: 24px 20px 48px; }
+}
+
+@media (max-width: 520px) {
+  .content { padding: 20px 14px 40px; }
+  .content h1 { font-size: 20px; }
+  .content h2 { font-size: 16px; }
+  .content p,.steps,.list { font-size: 12.5px; }
+  .table { min-width: 560px; }
+}

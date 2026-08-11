@@ -12,12 +12,12 @@ import (
 	"syscall"
 	"time"
 
-	"algo-visualizer/api/internal/handlers"
-	"algo-visualizer/api/internal/kafka"
-	"algo-visualizer/api/internal/middleware"
-	"algo-visualizer/api/internal/models"
-	"algo-visualizer/api/internal/postgres"
-	redisclient "algo-visualizer/api/internal/redis"
+	"algoweave/api/internal/handlers"
+	"algoweave/api/internal/kafka"
+	"algoweave/api/internal/middleware"
+	"algoweave/api/internal/models"
+	"algoweave/api/internal/postgres"
+	redisclient "algoweave/api/internal/redis"
 
 	"github.com/go-chi/chi/v5"
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
@@ -80,13 +80,22 @@ func main() {
 		resultsTopic,
 		"api-result-consumer",
 		func(result *models.Result) {
+			if result.Steps == nil {
+				result.Steps = []models.Step{}
+			}
 			log.Printf("result received: job=%s lang=%s steps=%d dur=%.1fms",
 				result.JobID, result.Language, len(result.Steps), result.DurationMS)
 
 			// Cache by submission hash and job ID. The hash is internal routing/cache
 			// metadata, so remove it before the result is pushed to clients.
-			if err := rdb.SetResult(ctx, result.Hash, result.JobID, result); err != nil {
-				log.Printf("redis: failed to cache result for job %s: %v", result.JobID, err)
+			cacheHash := result.Hash
+			if result.Error != "" {
+				// Keep failed jobs addressable by job_id, but never reuse a sandbox
+				// failure as the cached answer for the same source code.
+				cacheHash = ""
+			}
+			if err := rdb.SetResult(ctx, cacheHash, result.JobID, result); err != nil {
+				log.Printf("redis: failed to store result for job %s: %v", result.JobID, err)
 			}
 			result.Hash = ""
 

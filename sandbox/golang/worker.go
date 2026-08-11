@@ -37,6 +37,7 @@ type Step struct {
 	Type    string `json:"type"`
 	Indices []int  `json:"indices,omitempty"`
 	Array   []int  `json:"array,omitempty"`
+	Line    int    `json:"line,omitempty"`
 	Info    string `json:"info,omitempty"`
 }
 
@@ -52,12 +53,7 @@ const requiredImports = `"encoding/json"
 // assembleSource merges the required imports and injects the runtime
 // prelude + instrumented body into a single compilable Go file.
 func assembleSource(userCode string) string {
-	instrumented, subject := instrument(userCode)
-	if subject == "" {
-		// No subject slice found — still wrap so it compiles & runs, but no steps.
-		instrumented = mainFuncRe.ReplaceAllString(userCode, "func main() {\n\tdefer __finalize__()\n")
-	}
-
+	instrumented, _ := instrument(userCode)
 	code := instrumented
 
 	if importBlockRe.MatchString(code) {
@@ -74,7 +70,14 @@ func assembleSource(userCode string) string {
 	} else if singleImportRe.MatchString(code) {
 		code = singleImportRe.ReplaceAllStringFunc(code, func(stmt string) string {
 			pkg := singleImportRe.FindStringSubmatch(stmt)[1]
-			return "import (\n\t\"" + pkg + "\"\n\t" + requiredImports + "\n)"
+			imports := []string{"\"" + pkg + "\""}
+			if pkg != "encoding/json" {
+				imports = append(imports, "\"encoding/json\"")
+			}
+			if pkg != "fmt" {
+				imports = append(imports, "\"fmt\"")
+			}
+			return "import (\n\t" + strings.Join(imports, "\n\t") + "\n)"
 		})
 	} else {
 		code = packageLineRe.ReplaceAllString(code, "package main\n\nimport (\n\t"+requiredImports+"\n)")
@@ -84,17 +87,44 @@ func assembleSource(userCode string) string {
 	return code + "\n" + runtimePrelude
 }
 
+func errorResult(message string, durationMS float64) Result {
+	return Result{Steps: []Step{}, Error: message, DurationMS: durationMS}
+}
+
+func verifyExecutableWorkspace() error {
+	probePath := "/go-exec/.exec-probe"
+	defer os.Remove(probePath)
+
+	if err := os.WriteFile(probePath, []byte("#!/bin/sh\nexit 0\n"), 0o500); err != nil {
+		return fmt.Errorf("write executable workspace probe: %w", err)
+	}
+	if err := exec.Command(probePath).Run(); err != nil {
+		return fmt.Errorf("execute workspace probe: %w", err)
+	}
+	return nil
+}
+
 func executeCode(code string, maxSeconds float64) (Result, error) {
 	start := time.Now()
 	source := assembleSource(code)
 
-	tmpDir, err := os.MkdirTemp("", "algo-go-job-*")
+	// Source, Go caches and compiler scratch files stay on /tmp, which is
+	// intentionally mounted noexec. The final student binary is written to the
+	// dedicated /go-exec tmpfs, the only writable executable mount in the worker.
+	sourceDir, err := os.MkdirTemp("/tmp", "algoweave-go-src-*")
 	if err != nil {
 		return Result{}, err
 	}
-	defer os.RemoveAll(tmpDir)
+	defer os.RemoveAll(sourceDir)
 
-	mainPath := filepath.Join(tmpDir, "main.go")
+	execDir, err := os.MkdirTemp("/go-exec", "algoweave-go-bin-*")
+	if err != nil {
+		return errorResult("Failed to prepare Go executable workspace: "+err.Error(), time.Since(start).Seconds()*1000), nil
+	}
+	defer os.RemoveAll(execDir)
+
+	mainPath := filepath.Join(sourceDir, "main.go")
+	binaryPath := filepath.Join(execDir, "program")
 	if err := os.WriteFile(mainPath, []byte(source), 0o600); err != nil {
 		return Result{}, err
 	}
@@ -102,19 +132,61 @@ func executeCode(code string, maxSeconds float64) (Result, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(maxSeconds*float64(time.Second)))
 	defer cancel()
 
-	cmd := exec.CommandContext(ctx, "go", "run", mainPath)
-	cmd.Dir = tmpDir
-	cmd.Env = append(os.Environ(), "GOCACHE=/tmp/gocache", "CGO_ENABLED=0")
+	for _, dir := range []string{"/tmp/gocache", "/tmp/gopath", "/tmp/gomodcache", "/tmp/gotmp", "/tmp/home", "/go-exec"} {
+		if err := os.MkdirAll(dir, 0o700); err != nil {
+			return errorResult("Failed to prepare Go sandbox workspace: "+err.Error(), time.Since(start).Seconds()*1000), nil
+		}
+	}
 
+	env := append(os.Environ(),
+		"HOME=/tmp/home",
+		"GOCACHE=/tmp/gocache",
+		"GOPATH=/tmp/gopath",
+		"GOMODCACHE=/tmp/gomodcache",
+		"GOTMPDIR=/tmp/gotmp",
+		"GOTELEMETRY=off",
+		"GOMAXPROCS=1",
+		"CGO_ENABLED=0",
+	)
+
+	// Do not use `go run`: it places the generated executable inside GOTMPDIR.
+	// GOTMPDIR deliberately lives on the noexec /tmp mount. Build explicitly to
+	// /go-exec, then execute only that final binary.
+	buildCmd := exec.CommandContext(ctx, "go", "build", "-trimpath", "-o", binaryPath, mainPath)
+	buildCmd.Dir = sourceDir
+	buildCmd.Env = env
+	var buildStdout, buildStderr bytes.Buffer
+	buildCmd.Stdout = &buildStdout
+	buildCmd.Stderr = &buildStderr
+
+	if buildErr := buildCmd.Run(); buildErr != nil {
+		duration := time.Since(start).Seconds() * 1000
+		if ctx.Err() == context.DeadlineExceeded {
+			return errorResult(fmt.Sprintf("Execution timed out after %.0fs", maxSeconds), duration), nil
+		}
+		tail := lastLine(buildStderr.String())
+		if tail == "" {
+			tail = buildErr.Error()
+		}
+		return errorResult("Compile error: "+tail, duration), nil
+	}
+
+	if err := os.Chmod(binaryPath, 0o500); err != nil {
+		return errorResult("Failed to secure Go executable: "+err.Error(), time.Since(start).Seconds()*1000), nil
+	}
+
+	runCmd := exec.CommandContext(ctx, binaryPath)
+	runCmd.Dir = sourceDir
+	runCmd.Env = env
 	var stdout, stderr bytes.Buffer
-	cmd.Stdout = &stdout
-	cmd.Stderr = &stderr
+	runCmd.Stdout = &stdout
+	runCmd.Stderr = &stderr
 
-	runErr := cmd.Run()
+	runErr := runCmd.Run()
 	duration := time.Since(start).Seconds() * 1000
 
 	if ctx.Err() == context.DeadlineExceeded {
-		return Result{Error: fmt.Sprintf("Execution timed out after %.0fs", maxSeconds), DurationMS: duration}, nil
+		return errorResult(fmt.Sprintf("Execution timed out after %.0fs", maxSeconds), duration), nil
 	}
 
 	if runErr != nil {
@@ -122,12 +194,12 @@ func executeCode(code string, maxSeconds float64) (Result, error) {
 		if tail == "" {
 			tail = runErr.Error()
 		}
-		return Result{Error: "Sandbox error: " + tail, DurationMS: duration}, nil
+		return errorResult("Sandbox error: "+tail, duration), nil
 	}
 
 	steps, err := parseSteps(stdout.String())
 	if err != nil {
-		return Result{Error: "Failed to parse tracer output: " + err.Error(), DurationMS: duration}, nil
+		return errorResult("Failed to parse tracer output: "+err.Error(), duration), nil
 	}
 
 	return Result{Steps: steps, DurationMS: duration}, nil
@@ -166,6 +238,10 @@ func main() {
 	maxSeconds, _ := strconv.ParseFloat(getEnv("MAX_EXEC_SECONDS", "20"), 64)
 
 	log.Printf("[sandbox-go] starting worker, group=%s, filter=%s", groupID, languageFilter)
+	if err := verifyExecutableWorkspace(); err != nil {
+		log.Fatalf("[sandbox-go] executable workspace is not usable: %v", err)
+	}
+	log.Println("[sandbox-go] executable workspace check passed")
 
 	reader := kafka.NewReader(kafka.ReaderConfig{
 		Brokers: brokers,
@@ -205,11 +281,14 @@ func main() {
 		log.Printf("[sandbox-go] processing job %s", job.ID)
 		result, err := executeCode(job.Code, maxSeconds)
 		if err != nil {
-			result = Result{Error: fmt.Sprintf("internal sandbox error: %v", err)}
+			result = errorResult(fmt.Sprintf("internal sandbox error: %v", err), 0)
 		}
 		result.JobID = job.ID
 		result.Hash = job.Hash
 		result.Language = languageFilter
+		if result.Error != "" {
+			log.Printf("[sandbox-go] job %s failed: %s", job.ID, result.Error)
+		}
 
 		data, _ := json.Marshal(result)
 		if err := writer.WriteMessages(context.Background(), kafka.Message{Key: []byte(job.ID), Value: data}); err != nil {

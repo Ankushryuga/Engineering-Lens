@@ -7,7 +7,7 @@ import (
 	"log"
 	"time"
 
-	"algo-visualizer/api/internal/models"
+	"algoweave/api/internal/models"
 
 	"github.com/segmentio/kafka-go"
 )

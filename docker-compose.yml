@@ -2,7 +2,7 @@ services:
   # ── Infrastructure ──────────────────────────────────────────────────────────
   zookeeper:
     image: confluentinc/cp-zookeeper:7.6.0
-    container_name: algo-zookeeper
+    container_name: algoweave-zookeeper
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
@@ -16,7 +16,7 @@ services:
 
   kafka:
     image: confluentinc/cp-kafka:7.6.0
-    container_name: algo-kafka
+    container_name: algoweave-kafka
     depends_on:
       zookeeper:
         condition: service_healthy
@@ -36,13 +36,7 @@ services:
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
     healthcheck:
-      test:
-        [
-          "CMD",
-          "kafka-broker-api-versions",
-          "--bootstrap-server",
-          "localhost:9092",
-        ]
+      test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9092"]
       interval: 15s
       timeout: 10s
       retries: 10
@@ -52,7 +46,7 @@ services:
 
   redis:
     image: redis:7.2-alpine
-    container_name: algo-redis
+    container_name: algoweave-redis
     ports:
       # Host-side port remapped to 6380 to avoid colliding with unrelated
       # containers on this machine that already publish 6379. Containers on
@@ -67,9 +61,9 @@ services:
 
   postgres:
     image: postgres:16-alpine
-    container_name: algo-postgres
+    container_name: algoweave-postgres
     ports:
-      - "5433:5432"
+      - "${POSTGRES_HOST_PORT:-5433}:5432"
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-algo}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-algo_secret}
@@ -79,21 +73,43 @@ services:
       - ./catalog/schema.sql:/docker-entrypoint-initdb.d/01_schema.sql
       - ./catalog/seeds/algorithms.sql:/docker-entrypoint-initdb.d/02_seeds.sql
     healthcheck:
-      test:
-        [
-          "CMD-SHELL",
-          "pg_isready -U ${POSTGRES_USER:-algo} -d ${POSTGRES_DB:-algo_visualizer}",
-        ]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-algo} -d ${POSTGRES_DB:-algo_visualizer}"]
       interval: 5s
       timeout: 3s
       retries: 10
+
+  catalog-migrate:
+    image: postgres:16-alpine
+    container_name: algoweave-catalog-migrate
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PGPASSWORD: ${POSTGRES_PASSWORD:-algo_secret}
+    volumes:
+      - ./catalog/migrations:/migrations:ro
+    command:
+      - sh
+      - -c
+      - >-
+        psql -v ON_ERROR_STOP=1
+        -h postgres
+        -U ${POSTGRES_USER:-algo}
+        -d ${POSTGRES_DB:-algo_visualizer}
+        -f /migrations/008_pathfinding_grid_lessons.sql &&
+        psql -v ON_ERROR_STOP=1
+        -h postgres
+        -U ${POSTGRES_USER:-algo}
+        -d ${POSTGRES_DB:-algo_visualizer}
+        -f /migrations/013_python_go_catalog.sql
+    restart: "no"
 
   # ── API ─────────────────────────────────────────────────────────────────────
   api:
     build:
       context: ./api
       dockerfile: Dockerfile
-    container_name: algo-api
+    container_name: algoweave-api
     ports:
       - "8080:8080"
     environment:
@@ -109,6 +125,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      catalog-migrate:
+        condition: service_completed_successfully
       redis:
         condition: service_healthy
       kafka:
@@ -120,7 +138,7 @@ services:
     build:
       context: ./sandbox/python
       dockerfile: Dockerfile
-    container_name: algo-sandbox-python
+    container_name: algoweave-sandbox-python
     environment:
       KAFKA_BROKERS: kafka:9092
       KAFKA_JOBS_TOPIC: visualize-jobs
@@ -144,39 +162,11 @@ services:
     networks:
       - sandbox
 
-  sandbox-javascript:
-    build:
-      context: ./sandbox/javascript
-      dockerfile: Dockerfile
-    container_name: algo-sandbox-javascript
-    environment:
-      KAFKA_BROKERS: kafka:9092
-      KAFKA_JOBS_TOPIC: visualize-jobs
-      KAFKA_RESULTS_TOPIC: visualize-results
-      KAFKA_GROUP_ID: sandbox-javascript
-      LANGUAGE_FILTER: javascript
-      MAX_EXEC_SECONDS: "10"
-      MAX_MEMORY_MB: "128"
-    depends_on:
-      kafka:
-        condition: service_healthy
-    restart: unless-stopped
-    mem_limit: 160m
-    cpus: "0.75"
-    pids_limit: 64
-    read_only: true
-    tmpfs:
-      - /tmp:size=128m,mode=1777
-    security_opt:
-      - no-new-privileges:true
-    networks:
-      - sandbox
-
   sandbox-go:
     build:
       context: ./sandbox/golang
       dockerfile: Dockerfile
-    container_name: algo-sandbox-go
+    container_name: algoweave-sandbox-go
     environment:
       KAFKA_BROKERS: kafka:9092
       KAFKA_JOBS_TOPIC: visualize-jobs
@@ -184,73 +174,20 @@ services:
       KAFKA_GROUP_ID: sandbox-go
       LANGUAGE_FILTER: go
       MAX_EXEC_SECONDS: "20"
-      MAX_MEMORY_MB: "256"
+      MAX_MEMORY_MB: "384"
     depends_on:
       kafka:
         condition: service_healthy
     restart: unless-stopped
-    mem_limit: 320m
+    mem_limit: 512m
     cpus: "1.0"
-    pids_limit: 64
+    pids_limit: 128
     read_only: true
     tmpfs:
-      - /tmp:size=128m,mode=1777
-    security_opt:
-      - no-new-privileges:true
-    networks:
-      - sandbox
-
-  sandbox-java:
-    build:
-      context: ./sandbox/java
-      dockerfile: Dockerfile
-    container_name: algo-sandbox-java
-    environment:
-      KAFKA_BROKERS: kafka:9092
-      KAFKA_JOBS_TOPIC: visualize-jobs
-      KAFKA_RESULTS_TOPIC: visualize-results
-      KAFKA_GROUP_ID: sandbox-java
-      LANGUAGE_FILTER: java
-      MAX_EXEC_SECONDS: "20"
-      MAX_MEMORY_MB: "256"
-    depends_on:
-      kafka:
-        condition: service_healthy
-    restart: unless-stopped
-    mem_limit: 320m
-    cpus: "1.0"
-    pids_limit: 64
-    read_only: true
-    tmpfs:
-      - /tmp:size=128m,mode=1777
-    security_opt:
-      - no-new-privileges:true
-    networks:
-      - sandbox
-
-  sandbox-cpp:
-    build:
-      context: ./sandbox/cpp
-      dockerfile: Dockerfile
-    container_name: algo-sandbox-cpp
-    environment:
-      KAFKA_BROKERS: kafka:9092
-      KAFKA_JOBS_TOPIC: visualize-jobs
-      KAFKA_RESULTS_TOPIC: visualize-results
-      KAFKA_GROUP_ID: sandbox-cpp
-      LANGUAGE_FILTER: cpp
-      MAX_EXEC_SECONDS: "20"
-      MAX_MEMORY_MB: "256"
-    depends_on:
-      kafka:
-        condition: service_healthy
-    restart: unless-stopped
-    mem_limit: 320m
-    cpus: "1.0"
-    pids_limit: 64
-    read_only: true
-    tmpfs:
-      - /tmp:size=128m,mode=1777
+      # Student source/caches remain non-executable. Go's final compiled binary
+      # gets a separate, tightly scoped executable tmpfs.
+      - /tmp:rw,noexec,nosuid,nodev,size=192m,mode=1777
+      - /go-exec:rw,exec,nosuid,nodev,size=96m,mode=0700,uid=10001,gid=10001
     security_opt:
       - no-new-privileges:true
     networks:
@@ -262,7 +199,7 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       target: dev
-    container_name: algo-frontend
+    container_name: algoweave-frontend
     ports:
       - "5173:5173"
     volumes:

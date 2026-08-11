@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"strconv"
 
-	"algo-visualizer/api/internal/models"
-	"algo-visualizer/api/internal/postgres"
+	"algoweave/api/internal/models"
+	"algoweave/api/internal/postgres"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5"

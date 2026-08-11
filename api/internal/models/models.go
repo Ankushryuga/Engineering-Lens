@@ -4,20 +4,14 @@ package models
 type Language string
 
 const (
-	LangPython     Language = "python"
-	LangJavaScript Language = "javascript"
-	LangGo         Language = "go"
-	LangJava       Language = "java"
-	LangCpp        Language = "cpp"
+	LangPython Language = "python"
+	LangGo     Language = "go"
 )
 
-// SupportedLanguages lists all languages accepted by the API.
+// SupportedLanguages lists the two runtimes intentionally supported by the product.
 var SupportedLanguages = map[Language]bool{
-	LangPython:     true,
-	LangJavaScript: true,
-	LangGo:         true,
-	LangJava:       true,
-	LangCpp:        true,
+	LangPython: true,
+	LangGo:     true,
 }
 
 // MaxCodeBytes is the maximum allowed code size.
@@ -82,6 +76,17 @@ type Step struct {
 	Lists    map[string][]string `json:"lists,omitempty"`
 	Pointers map[string]*string  `json:"pointers,omitempty"`
 	Merged   []string            `json:"merged,omitempty"`
+
+	// Weighted-grid pathfinding fields. A grid cell uses -1 for an impassable
+	// building and 1..5 for traversable traffic cost. Coordinates are [row,col].
+	Grid      [][]int `json:"grid,omitempty"`
+	StartCell []int   `json:"start_cell,omitempty"`
+	GoalCell  []int   `json:"goal_cell,omitempty"`
+	Cell      []int   `json:"cell,omitempty"`
+	FromCell  []int   `json:"from_cell,omitempty"`
+	ToCell    []int   `json:"to_cell,omitempty"`
+	CellCost  int     `json:"cell_cost,omitempty"`
+	GridPath  [][]int `json:"grid_path,omitempty"`
 }
 
 // Result is the message published to the visualize-results Kafka topic.

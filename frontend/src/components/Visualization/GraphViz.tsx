@@ -123,8 +123,12 @@ export default function GraphViz({ step, allSteps, currentIndex }: GraphVizProps
                   }
                   markerEnd={onPath ? 'url(#arrowPath)' : isCurrent ? 'url(#arrowActive)' : 'url(#arrow)'}
                 />
-                <rect x={midX - 10} y={midY - 8} width={20} height={14} className={styles.weightBg} />
-                <text x={midX} y={midY + 3} className={styles.weightLabel} textAnchor="middle">{weight}</text>
+                {weight !== undefined ? (
+                  <>
+                    <rect x={midX - 10} y={midY - 8} width={20} height={14} className={styles.weightBg} />
+                    <text x={midX} y={midY + 3} className={styles.weightLabel} textAnchor="middle">{weight}</text>
+                  </>
+                ) : null}
               </g>
             )
           })}
@@ -179,9 +183,7 @@ export default function GraphViz({ step, allSteps, currentIndex }: GraphVizProps
         <span><span className={styles.dotPath} /> shortest path</span>
       </div>
 
-      {step && (
-        <div className={styles.status}>{step.info}</div>
-      )}
+      {step?.info ? <div className={styles.status}>{step.info}</div> : null}
     </div>
   )
 }

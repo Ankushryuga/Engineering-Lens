@@ -1,4 +1,4 @@
-module algo-visualizer/sandbox/golang
+module algoweave/sandbox/golang
 
 go 1.24
 

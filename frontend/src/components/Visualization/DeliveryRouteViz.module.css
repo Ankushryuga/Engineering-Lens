@@ -1,0 +1,51 @@
+.root { width:100%; padding:16px; display:flex; flex-direction:column; gap:12px; }
+.topbar { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+.identity { display:flex; align-items:center; gap:10px; min-width:0; }
+.brandIcon { width:38px; height:38px; border:1px solid var(--accent-border); border-radius:12px; background:var(--accent-dim); display:grid; place-items:center; font-size:19px; flex:0 0 auto; }
+.identity div { display:flex; flex-direction:column; min-width:0; }
+.identity strong { font-size:14px; }
+.identity span { color:var(--text-secondary); font-size:10.5px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.liveBadge { padding:6px 9px; border:1px solid var(--border); background:var(--surface-2); border-radius:999px; color:var(--text-secondary); font-size:9.5px; white-space:nowrap; }
+.liveBadge > span { display:inline-block; width:7px; height:7px; margin-right:5px; border-radius:50%; background:var(--accent); }
+.stats { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); border:1px solid var(--border); border-radius:12px; background:var(--surface-2); overflow:hidden; }
+.stats > div { padding:9px 11px; border-right:1px solid var(--border); display:flex; flex-direction:column; gap:1px; min-width:0; }
+.stats > div:last-child { border-right:none; }
+.stats strong { font-family:var(--mono); font-size:12px; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+.stats span { color:var(--text-muted); font-size:8.5px; text-transform:uppercase; letter-spacing:.05em; }
+.routeStat strong { color:var(--done); }
+.legend { display:flex; align-items:center; flex-wrap:wrap; gap:12px; color:var(--text-secondary); font-size:9px; }
+.legend span { display:flex; align-items:center; gap:5px; }
+.legend i { display:inline-block; width:10px; height:10px; border-radius:3px; }
+.legendHub { width:auto!important; height:auto!important; font-style:normal; }
+.legendCourier { width:auto!important; height:auto!important; font-style:normal; }
+.legendVisit { background:var(--compare-dim); border:1px solid var(--compare); }
+.legendCurrent { background:var(--accent); }
+.legendPath { background:var(--done); }
+.legendTraffic { background:color-mix(in srgb, var(--swap) 48%, transparent); }
+.cityWrap { border:1px solid var(--border-strong); border-radius:14px; overflow:hidden; background:var(--surface); box-shadow:var(--shadow-sm); }
+.city { position:relative; display:grid; aspect-ratio:16/9; min-height:250px; }
+.cell { border-right:1px solid var(--border); border-bottom:1px solid var(--border); background:var(--surface); min-width:0; display:grid; place-items:center; font-size:13px; opacity:.78; }
+.cell:nth-child(2n) { background:var(--surface-2); }
+.building { background:var(--surface-3)!important; opacity:.92; }
+.traffic { background:color-mix(in srgb, var(--swap-dim) 65%, var(--surface))!important; }
+.roads { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; z-index:2; }
+.road { stroke:var(--border-strong); stroke-width:5; stroke-linecap:round; opacity:.55; }
+.roadActive { stroke:var(--accent); stroke-width:8; stroke-linecap:round; opacity:.96; }
+.roadPath { stroke:var(--done); stroke-width:9; stroke-linecap:round; opacity:.96; }
+.roadCost { fill:var(--text-secondary); font:600 16px var(--mono); paint-order:stroke; stroke:var(--surface); stroke-width:7px; stroke-linejoin:round; text-anchor:middle; }
+.courierHalo { fill: var(--surface); stroke: var(--accent); stroke-width: 2; }
+.courierEmoji { font-size: 20px; }
+.stop { z-index:4; align-self:center; justify-self:center; width:min(82px,88%); min-height:46px; padding:5px 5px; border:1px solid var(--border-strong); border-radius:10px; background:var(--surface); box-shadow:var(--shadow-xs); display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; line-height:1.05; }
+.stopIcon { font-size:15px; }
+.stop strong { max-width:100%; font-size:8.5px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.stop small { color:var(--text-muted); font:7.5px var(--mono); }
+.stopVisited { border-color:var(--compare); background:var(--compare-dim); }
+.stopCurrent { border-color:var(--accent); background:var(--accent-dim); box-shadow:0 0 0 3px var(--accent-glow); transform:translateY(-2px); }
+.stopPath { border-color:var(--done); background:var(--done-dim); }
+.status { display:flex; align-items:flex-start; gap:9px; padding:10px 12px; border:1px solid var(--border); border-radius:11px; background:var(--surface-2); }
+.statusDot { width:8px; height:8px; margin-top:4px; border-radius:50%; background:var(--accent); flex:0 0 auto; }
+.status div { display:flex; flex-direction:column; gap:2px; }
+.status strong { font-size:10px; }
+.status span { color:var(--text-secondary); font-size:9.5px; line-height:1.45; }
+.note { color:var(--text-muted); font-size:8.5px; line-height:1.4; }
+@media (max-width:720px) { .stats { grid-template-columns:repeat(2,minmax(0,1fr)); } .stats > div:nth-child(2) { border-right:none; } .stats > div:nth-child(-n+2) { border-bottom:1px solid var(--border); } .identity span { white-space:normal; } .liveBadge { display:none; } .city { min-height:220px; } .stop { width:min(64px,90%); } }

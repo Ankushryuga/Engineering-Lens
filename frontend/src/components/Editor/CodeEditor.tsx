@@ -11,13 +11,13 @@ interface CodeEditorProps {
 }
 
 const DARK_COLORS = {
-  'editor.background': '#0A0A0B',
-  'editor.foreground': '#E4E4E7',
-  'editor.lineHighlightBackground': '#18181B',
-  'editorLineNumber.foreground': '#57575E',
-  'editorLineNumber.activeForeground': '#8C8C94',
-  'editor.selectionBackground': '#171B2E',
-  'editorGutter.background': '#0A0A0B',
+  'editor.background': '#0A1020',
+  'editor.foreground': '#F4F7FB',
+  'editor.lineHighlightBackground': '#141E33',
+  'editorLineNumber.foreground': '#64748B',
+  'editorLineNumber.activeForeground': '#AAB5C9',
+  'editor.selectionBackground': '#29245A',
+  'editorGutter.background': '#0A1020',
 }
 
 const LIGHT_COLORS = {
@@ -26,7 +26,7 @@ const LIGHT_COLORS = {
   'editorLineHighlightBackground': '#F1F1F3',
   'editorLineNumber.foreground': '#8A8A91',
   'editorLineNumber.activeForeground': '#55555C',
-  'editor.selectionBackground': '#E4E9FC',
+  'editor.selectionBackground': '#EAE7FF',
   'editorGutter.background': '#FFFFFF',
 }
 
@@ -41,7 +41,7 @@ export default function CodeEditor({ code, language, onChange, readOnly }: CodeE
         language={meta.monacoLang}
         value={code}
         onChange={val => onChange(val ?? '')}
-        theme={theme === 'dark' ? 'algo-dark' : 'algo-light'}
+        theme={theme === 'dark' ? 'algoweave-dark' : 'algoweave-light'}
         options={{
           fontSize: 13,
           fontFamily: "'IBM Plex Mono', 'Fira Code', monospace",
@@ -64,13 +64,13 @@ export default function CodeEditor({ code, language, onChange, readOnly }: CodeE
           },
         }}
         beforeMount={monaco => {
-          monaco.editor.defineTheme('algo-dark', {
+          monaco.editor.defineTheme('algoweave-dark', {
             base: 'vs-dark',
             inherit: true,
             rules: [],
             colors: DARK_COLORS,
           })
-          monaco.editor.defineTheme('algo-light', {
+          monaco.editor.defineTheme('algoweave-light', {
             base: 'vs',
             inherit: true,
             rules: [],

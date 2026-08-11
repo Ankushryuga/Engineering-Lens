@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"algo-visualizer/api/internal/models"
+	"algoweave/api/internal/models"
 )
 
 // staticDenyPatterns lists dangerous patterns per language that are rejected
@@ -14,22 +14,9 @@ var staticDenyPatterns = map[models.Language][]string{
 		"os.system", "subprocess", "__import__", "exec(", "eval(",
 		"open(", "socket", "urllib", "requests", "http.client",
 	},
-	models.LangJavaScript: {
-		"child_process", "require('fs')", `require("fs")`,
-		"require('net')", `require("net")`, "process.exit",
-		"XMLHttpRequest", "fetch(", "WebSocket",
-	},
 	models.LangGo: {
 		"os/exec", "net/http", "os.Remove", "os.Create",
 		"syscall", "unsafe",
-	},
-	models.LangJava: {
-		"Runtime.getRuntime", "ProcessBuilder", "java.net",
-		"java.io.File", "System.exit",
-	},
-	models.LangCpp: {
-		"system(", "popen(", "fork(", "exec(", "#include <cstdlib>",
-		"#include<cstdlib>",
 	},
 }
 

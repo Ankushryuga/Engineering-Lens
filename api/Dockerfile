@@ -6,15 +6,15 @@ COPY go.mod go.sum ./
 RUN go mod download
 
 COPY . .
-RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /algo-api ./cmd/server
+RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /algoweave-api ./cmd/server
 
 # ── Runtime stage ─────────────────────────────────────────────────────────────
 FROM alpine:3.19
 
 RUN apk add --no-cache ca-certificates tzdata
 WORKDIR /app
-COPY --from=builder /algo-api .
+COPY --from=builder /algoweave-api .
 
 EXPOSE 8080
 USER nobody
-ENTRYPOINT ["/app/algo-api"]
+ENTRYPOINT ["/app/algoweave-api"]

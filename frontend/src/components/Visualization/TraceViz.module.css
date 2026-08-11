@@ -1,0 +1,149 @@
+.root {
+  height: 100%;
+  overflow-y: auto;
+  padding: 24px;
+  background: var(--panel-bg);
+}
+
+.summary {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  align-items: flex-start;
+  padding: 20px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--surface);
+}
+
+.kicker {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--accent-soft);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.summary h3 {
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -.02em;
+}
+
+.summary p {
+  max-width: 620px;
+  margin-top: 6px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.progressBadge {
+  min-width: 58px;
+  padding: 8px 10px;
+  border-radius: 999px;
+  background: var(--accent-dim);
+  color: var(--accent-soft);
+  font-family: var(--mono);
+  font-size: 12px;
+  text-align: center;
+}
+
+.track {
+  height: 8px;
+  margin: 18px 2px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--surface-3);
+}
+
+.fill {
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent);
+  transition: width .18s ease;
+}
+
+.timeline {
+  display: grid;
+  gap: 8px;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 34px 12px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  padding: 10px 12px;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  color: var(--text-muted);
+}
+
+.active {
+  border-color: var(--border-strong);
+  background: var(--surface);
+  color: var(--text);
+}
+
+.stepNo,
+.line {
+  font-family: var(--mono);
+  font-size: 10px;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.active .dot {
+  background: var(--accent);
+  box-shadow: 0 0 0 5px var(--accent-dim);
+}
+
+.rowBody {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.rowBody strong {
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.rowBody span {
+  overflow: hidden;
+  color: var(--text-secondary);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.note {
+  margin-top: 18px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--surface-2);
+  color: var(--text-secondary);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+@media (max-width: 520px) {
+  .root { padding: 12px; }
+  .summary { padding: 14px; gap: 10px; }
+  .summary h3 { font-size: 17px; }
+  .summary p { font-size: 11.5px; }
+  .progressBadge { min-width: 50px; padding: 6px 8px; font-size: 10px; }
+  .row { grid-template-columns: 28px 10px minmax(0, 1fr); gap: 7px; padding: 8px; }
+  .line { display: none; }
+  .rowBody strong { font-size: 11px; }
+  .rowBody span { font-size: 9.5px; }
+}

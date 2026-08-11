@@ -29,7 +29,7 @@ CREATE INDEX IF NOT EXISTS idx_templates_difficulty ON templates(difficulty);
 CREATE TABLE IF NOT EXISTS template_solutions (
     id          SERIAL PRIMARY KEY,
     template_id INTEGER NOT NULL REFERENCES templates(id) ON DELETE CASCADE,
-    language    TEXT NOT NULL CHECK (language IN ('python', 'javascript', 'go', 'java', 'cpp')),
+    language    TEXT NOT NULL CHECK (language IN ('python', 'go')),
     code        TEXT NOT NULL,
     created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
     UNIQUE (template_id, language)

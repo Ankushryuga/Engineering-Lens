@@ -1,119 +1,163 @@
-import { useNavigate } from 'react-router-dom'
+import { useMemo, useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
+import { useTheme } from '@/hooks/useTheme'
 import styles from './Landing.module.css'
 
-const DEMO_CODE = `def bubble_sort(arr):
-    n = len(arr)
-    for i in range(n):
-        for j in range(n-i-1):
-            if arr[j] > arr[j+1]:
-                arr[j], arr[j+1] = arr[j+1], arr[j]
-    return arr`
+interface PreviewStep {
+  values: number[]
+  indices: number[]
+  type: 'compare' | 'swap' | 'done'
+  label: string
+}
 
-const BARS = [
-  { h: 35, cls: '' },
-  { h: 78, cls: 'compare' },
-  { h: 55, cls: 'compare' },
-  { h: 95, cls: '' },
-  { h: 20, cls: '' },
-  { h: 65, cls: '' },
-]
+const PREVIEW_INPUT = [64, 34, 25, 12, 22]
 
-const FEATURES = [
-  {
-    tag: 'Isolation',
-    title: 'Sandboxed by default',
-    body: 'Every run executes in a container with no network access, capped memory, and a hard timeout.',
-  },
-  {
-    tag: 'Coverage',
-    title: 'One engine, any algorithm',
-    body: 'Sorting, graph traversal, recursion, and dynamic programming all use the same step-recording engine.',
-  },
-  {
-    tag: 'Templates',
-    title: 'Full DSA catalog on tap',
-    body: 'Every classic algorithm across sorting, graphs, trees, DP, backtracking, and strings — pick one from a single dropdown, no browsing required.',
-  },
-]
+function buildBubblePreview(input: number[]): PreviewStep[] {
+  const values = [...input]
+  const steps: PreviewStep[] = []
+
+  for (let pass = 0; pass < values.length; pass++) {
+    for (let index = 0; index < values.length - pass - 1; index++) {
+      steps.push({
+        values: [...values],
+        indices: [index, index + 1],
+        type: 'compare',
+        label: `Compare ${values[index]} kg and ${values[index + 1]} kg`,
+      })
+
+      if (values[index] > values[index + 1]) {
+        const left = values[index]
+        const right = values[index + 1]
+        values[index] = right
+        values[index + 1] = left
+        steps.push({
+          values: [...values],
+          indices: [index, index + 1],
+          type: 'swap',
+          label: `${left} kg is heavier, so the packages swap places`,
+        })
+      }
+    }
+  }
+
+  steps.push({
+    values: [...values],
+    indices: [],
+    type: 'done',
+    label: 'The packages are sorted from lightest to heaviest',
+  })
+  return steps
+}
 
 export default function LandingPage() {
   const navigate = useNavigate()
+  const { theme, toggleTheme } = useTheme()
+  const previewSteps = useMemo(() => buildBubblePreview(PREVIEW_INPUT), [])
+  const [previewStep, setPreviewStep] = useState(0)
+  const preview = previewSteps[previewStep]
+
+  const nextPreviewStep = () => {
+    setPreviewStep(index => index >= previewSteps.length - 1 ? 0 : index + 1)
+  }
 
   return (
     <div className={styles.page}>
-      {/* Hero */}
-      <div className={styles.hero}>
-        <div className={styles.eyebrow}>
-          SANDBOXED EXECUTION · PYTHON · GO · JAVA · JAVASCRIPT · C/C++
-        </div>
-        <h1 className={styles.h1}>
-          Step through exactly how your algorithm executes.
-        </h1>
-        <p className={styles.sub}>
-          Paste a function, run it in an isolated sandbox, and inspect every comparison,
-          swap, and recursive call as a reproducible sequence of steps.
-        </p>
-        <div className={styles.ctas}>
-          <button className={styles.btnPrimary} onClick={() => navigate('/app')}>
-            Open app
-          </button>
-          <a
-            href="https://github.com"
-            target="_blank"
-            rel="noopener noreferrer"
-            className={styles.btnGhost}
+      <header className={styles.nav}>
+        <Link to="/" className={styles.brand} aria-label="AlgoWeave home">
+          <span className={styles.brandMark}>⌁</span>
+          <span>AlgoWeave</span>
+        </Link>
+        <div className={styles.navActions}>
+          <Link to="/docs" className={styles.docsLink}>Docs</Link>
+          <button
+            type="button"
+            className={styles.themeButton}
+            onClick={toggleTheme}
+            aria-label={`switch to ${theme === 'dark' ? 'light' : 'dark'} theme`}
           >
-            View on GitHub
-          </a>
+            {theme === 'dark' ? '☀' : '☾'}
+          </button>
         </div>
-      </div>
+      </header>
 
-      {/* Preview panel */}
-      <div className={styles.previewWrap}>
-        <div className={styles.previewInner}>
-          <div className={styles.previewHead}>
-            <span>solution.py — step 7 of 24</span>
+      <main className={styles.hero}>
+        <section className={styles.heroCopy}>
+          <span className={styles.eyebrow}>Learn algorithms visually</span>
+          <h1>See the idea. Understand the steps. Reveal the code when you are ready.</h1>
+          <p>
+            AlgoWeave turns algorithms into interactive lessons with real-world Story mode,
+            step-by-step playback, optional explanations, and source code on demand.
+          </p>
+
+          <div className={styles.actions}>
+            <button type="button" className={styles.primaryButton} onClick={() => navigate('/app?mode=guided')}>
+              Start learning <span>→</span>
+            </button>
+            <button type="button" className={styles.secondaryButton} onClick={() => navigate('/app?mode=custom')}>
+              Try my own code
+            </button>
           </div>
-          <div className={styles.split}>
-            <div className={styles.codeArea}>
-              <div className={styles.lineNums}>
-                {DEMO_CODE.split('\n').map((_, i) => (
-                  <div key={i}>{i + 1}</div>
-                ))}
-              </div>
-              <pre className={styles.code}>{
-                DEMO_CODE
-                  .replace(/\bdef\b/g, '<kw>def</kw>')
-                  .replace(/\bfor\b/g, '<kw>for</kw>')
-                  .replace(/\bin\b/g, '<kw>in</kw>')
-                  .replace(/\bif\b/g, '<kw>if</kw>')
-                  .replace(/\breturn\b/g, '<kw>return</kw>')
-              }</pre>
-              <pre className={styles.codeRaw}>{DEMO_CODE}</pre>
+
+          <div className={styles.capabilities} aria-label="Learning features">
+            <span>🌍 Story mode</span>
+            <span>💡 Step explanations</span>
+            <span>⌨ Source on demand</span>
+          </div>
+        </section>
+
+        <section className={styles.preview} aria-label="Bubble Sort lesson preview">
+          <div className={styles.previewHeader}>
+            <div>
+              <span>Lesson preview</span>
+              <strong>Warehouse Sorting Line</strong>
+              <small>Bubble Sort</small>
             </div>
-            <div className={styles.vizArea}>
-              {BARS.map((b, i) => (
+            <span className={styles.stepCount}>{previewStep + 1}/{previewSteps.length}</span>
+          </div>
+
+          <div className={styles.explanation}>
+            <span>{preview.type === 'compare' ? 'Compare' : preview.type === 'swap' ? 'Swap' : 'Done'}</span>
+            <p>{preview.label}</p>
+          </div>
+
+          <div className={styles.packages}>
+            {preview.values.map((value, index) => {
+              const active = preview.indices.includes(index)
+              return (
                 <div
-                  key={i}
-                  className={styles.bar + (b.cls ? ' ' + styles[b.cls as keyof typeof styles] : '')}
-                  style={{ height: b.h + '%' }}
-                />
-              ))}
-            </div>
+                  key={`${index}-${value}`}
+                  className={`${styles.package} ${active ? styles.packageActive : ''} ${preview.type === 'swap' && active ? styles.packageSwap : ''}`}
+                >
+                  <span>📦</span>
+                  <strong>{value} kg</strong>
+                </div>
+              )
+            })}
           </div>
-        </div>
-      </div>
 
-      {/* Feature cards */}
-      <div className={styles.features}>
-        {FEATURES.map(f => (
-          <div key={f.tag} className={styles.feature}>
-            <div className={styles.featureTag}>{f.tag}</div>
-            <h3 className={styles.featureTitle}>{f.title}</h3>
-            <p className={styles.featureBody}>{f.body}</p>
+          <div className={styles.previewControls}>
+            <button type="button" onClick={() => setPreviewStep(index => Math.max(0, index - 1))} disabled={previewStep === 0}>
+              ← Previous
+            </button>
+            <input
+              type="range"
+              min={0}
+              max={previewSteps.length - 1}
+              value={previewStep}
+              onChange={event => setPreviewStep(Number(event.target.value))}
+              aria-label="Bubble Sort preview step"
+            />
+            <button type="button" onClick={nextPreviewStep}>
+              {previewStep === previewSteps.length - 1 ? 'Restart' : 'Next →'}
+            </button>
           </div>
-        ))}
-      </div>
+        </section>
+      </main>
+
+      <footer className={styles.footer}>
+        <span>AlgoWeave · visual algorithm learning</span>
+        <Link to="/docs">Documentation</Link>
+      </footer>
     </div>
   )
 }

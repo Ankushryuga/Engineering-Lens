@@ -9,10 +9,10 @@ import (
 	"sync"
 	"time"
 
-	"algo-visualizer/api/internal/kafka"
-	"algo-visualizer/api/internal/models"
-	redisclient "algo-visualizer/api/internal/redis"
-	"algo-visualizer/api/internal/validator"
+	"algoweave/api/internal/kafka"
+	"algoweave/api/internal/models"
+	redisclient "algoweave/api/internal/redis"
+	"algoweave/api/internal/validator"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
@@ -76,9 +76,13 @@ func (h *VisualizeHandler) unsubscribe(jobID string, ch chan *models.Result) {
 	}
 }
 
+// traceCacheVersion changes whenever tracer semantics change so stale traces
+// from older workers cannot be served to the current frontend.
+const traceCacheVersion = "trace-v2"
+
 // codeHash returns a deterministic cache key for a (code, language) pair.
 func codeHash(code string, lang models.Language) string {
-	h := sha256.Sum256([]byte(string(lang) + ":" + code))
+	h := sha256.Sum256([]byte(traceCacheVersion + ":" + string(lang) + ":" + code))
 	return fmt.Sprintf("%x", h)
 }
 

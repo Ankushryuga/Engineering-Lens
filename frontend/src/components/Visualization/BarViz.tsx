@@ -28,7 +28,7 @@ function stepInfo(step: Step | null): string {
     case 'set':
       return 'setting arr[' + (step.indices?.[0] ?? '') + ']'
     case 'done':
-      return 'sorted!'
+      return 'complete'
     default:
       return step.type
   }
@@ -36,10 +36,12 @@ function stepInfo(step: Step | null): string {
 
 export default function BarViz({ step, allSteps }: BarVizProps) {
   const arr = step?.array ?? [...allSteps].reverse().find(s => s.array)?.array ?? []
-  const numbers = arr.map(v => Number(v)).filter(n => !isNaN(n))
-  const max = Math.max(...numbers, 1)
+  const numericItems = arr
+    .map((value, index) => ({ value: Number(value), index }))
+    .filter(item => !Number.isNaN(item.value))
+  const max = Math.max(...numericItems.map(item => item.value), 1)
 
-  if (numbers.length === 0) {
+  if (numericItems.length === 0) {
     return (
       <div className={styles.empty}>
         <span>no array data in this step</span>
@@ -55,15 +57,15 @@ export default function BarViz({ step, allSteps }: BarVizProps) {
   return (
     <div className={styles.root}>
       <div className={styles.vizBody}>
-        {numbers.map((val, i) => {
+        {numericItems.map(({ value: val, index }) => {
           const heightPct = Math.max((val / max) * 100, 2) + '%'
-          const barClass = getBarClass(i, step)
+          const barClass = getBarClass(index, step)
           return (
             <div
-              key={i}
+              key={index}
               className={styles.bar + (barClass ? ' ' + barClass : '')}
               style={{ height: heightPct }}
-              title={'arr[' + i + '] = ' + val}
+              title={'arr[' + index + '] = ' + val}
             />
           )
         })}
