@@ -3,7 +3,7 @@ package validator
 import (
 	"testing"
 
-	"algoweave/api/internal/models"
+	"engineering-lens/api/internal/models"
 )
 
 func TestValidateRequestSupportedLanguages(t *testing.T) {

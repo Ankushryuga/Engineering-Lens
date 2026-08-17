@@ -12,6 +12,7 @@ export default function DocsPage() {
           <a href="#overview" className={styles.current}>Overview</a>
           <a href="#first-run">Your first run</a>
           <a href="#step-schema">Step schema</a>
+          <a href="#system-design">System design lab</a>
         </div>
         <div className={styles.navGroup}>
           <h5>Languages</h5>
@@ -28,9 +29,9 @@ export default function DocsPage() {
       {/* Content */}
       <main className={styles.content}>
         <section id="overview">
-          <h1>AlgoWeave</h1>
+          <h1>Engineering Lens</h1>
           <p>
-            AlgoWeave is an interactive algorithm learning lab. Start from a guided real-world
+            Engineering Lens is an interactive algorithm learning lab. Start from a guided real-world
             Story view or run your own code, then inspect the same execution as a reproducible,
             seekable trace. Explanations and source code are optional layers so the concept can
             stay visible before implementation detail takes over.
@@ -39,6 +40,15 @@ export default function DocsPage() {
             The guided catalog and custom-code path share the same sandbox, normalized step
             format, and player. The bundled catalog contains 55 canonical lessons across all 11
             DSA categories, with both Python and Go reference solutions for every lesson.
+          </p>
+          <p>
+            The <Link to="/system-design">System Design workspace</Link> now has two complementary surfaces.
+            <strong> All Topics</strong> exposes the technical System Design sections from the four bundled
+            handbooks, including technically meaningful appendices. Handbook navigation, career guidance,
+            exercises, checklists, templates, and review-only sections are intentionally excluded, with source-preserving notes,
+            topic-specific Go/WebAssembly visualizations, search, filters, playback, failure simulation, and completion progress. <strong>Architecture Labs</strong> combine
+            those concepts into interactive end-to-end backend, database, cloud, and GenAI designs with
+            traffic scaling, failure injection, component inspection, and explicit trade-offs.
           </p>
         </section>
 
@@ -50,6 +60,25 @@ export default function DocsPage() {
             <li>Click <strong>Run &amp; visualize</strong>. Source code stays hidden unless you choose <strong>Show source code</strong>.</li>
             <li>Use the player above the visualization to play, pause, step forward/back, and scrub through the trace.</li>
             <li>Enable <strong>Explain how it works</strong> to see what the current step is doing, why it happens, and what changed.</li>
+          </ol>
+        </section>
+
+        <section id="system-design">
+          <h2>System design workspace</h2>
+          <p>
+            Open <Link to="/system-design">System Design</Link> to study both individual concepts and complete
+            production architectures. The workspace is generated from the bundled Backend Systems, Database
+            System Design, Cloud Architecture, and GenAI System Design references so the source curriculum is
+            not reduced to a small set of example diagrams.
+          </p>
+          <ol className={styles.steps}>
+            <li><strong>All Topics:</strong> search the 1,000+ technical-topic library across the four supplied handbooks, including technically meaningful appendices.</li>
+            <li>Open a topic to run its topic-appropriate visualization: execution-plan tree, MVCC timeline, queue/stream, rate limiter, VPC topology, multi-region failover, RAG pipeline, agent loop, model gateway, or another mapped Go renderer.</li>
+            <li>Use Actual visualization, Step playback, Failures, and Trade-offs inside the Go engine, then open full Source notes when you want the supplied handbook text.</li>
+            <li>Track completion locally and move sequentially through each handbook with Previous/Next navigation.</li>
+            <li><strong>Architecture Labs:</strong> play or scrub end-to-end request/data flows and inspect component responsibilities.</li>
+            <li>Switch traffic between 1×, 10×, and 100× and inject realistic failures to inspect pressure, blast radius, and recovery.</li>
+            <li>Review requirements, scale assumptions, production metrics, key decisions, and trade-offs for each architecture lab.</li>
           </ol>
         </section>
 

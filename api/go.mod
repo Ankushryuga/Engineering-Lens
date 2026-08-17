@@ -1,4 +1,4 @@
-module algoweave/api
+module engineering-lens/api
 
 go 1.24
 

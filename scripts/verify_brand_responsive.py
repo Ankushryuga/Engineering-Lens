@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""AlgoWeave v17 brand + responsive-layout regression checks."""
+"""Engineering Lens brand + responsive-layout regression checks."""
 from pathlib import Path
 import re
 import sys
@@ -27,22 +27,22 @@ def require(condition: bool, message: str) -> None:
         failures.append(message)
 
 # User-facing branding and package/module identity.
-require('AlgoWeave' in text['sidebar'] and 'AlgoWeave' in text['landing'], 'AlgoWeave branding missing from primary UI')
-require('AlgoWeave' in text['docs'] and text['readme'].startswith('# AlgoWeave'), 'Docs/README still use the old project identity')
-require('<title>AlgoWeave' in text['index'], 'browser title was not renamed')
-require('"name": "algoweave-frontend"' in text['package'], 'frontend package was not renamed')
-require(text['api_mod'].startswith('module algoweave/api'), 'API Go module was not renamed')
-require(text['sandbox_mod'].startswith('module algoweave/sandbox/golang'), 'Go sandbox module was not renamed')
-require('id="algoweave-navigation"' in text['sidebar'] and 'aria-controls="algoweave-navigation"' in text['sidebar'], 'navigation accessibility ids were not renamed')
-require('algoweave-sandbox-go' in text['compose'] and 'algoweave-frontend' in text['compose'], 'container display names were not renamed')
+require('Engineering Lens' in text['sidebar'] and 'Engineering Lens' in text['landing'], 'Engineering Lens branding missing from primary UI')
+require('Engineering Lens' in text['docs'] and text['readme'].startswith('# Engineering Lens'), 'Docs/README still use the old project identity')
+require('<title>Engineering Lens' in text['index'], 'browser title was not renamed')
+require('"name": "engineering-lens-frontend"' in text['package'], 'frontend package was not renamed')
+require(text['api_mod'].startswith('module engineering-lens/api'), 'API Go module was not renamed')
+require(text['sandbox_mod'].startswith('module engineering-lens/sandbox/golang'), 'Go sandbox module was not renamed')
+require('id="engineering-lens-navigation"' in text['sidebar'] and 'aria-controls="engineering-lens-navigation"' in text['sidebar'], 'navigation accessibility ids were not renamed')
+require('engineering-lens-sandbox-go' in text['compose'] and 'engineering-lens-frontend' in text['compose'], 'container display names were not renamed')
 
 # Preserve theme preference while migrating the storage identity.
-require("const STORAGE_KEY = 'algoweave-theme'" in text['theme'], 'new AlgoWeave theme key missing')
+require("const STORAGE_KEY = 'engineering-lens-theme'" in text['theme'], 'new Engineering Lens theme key missing')
 require("const LEGACY_STORAGE_KEY = 'algo-visualizer-theme'" in text['theme'], 'legacy theme preference migration missing')
 
-# The old visual brand should be completely gone. Compatibility-only internal
-# identifiers such as the legacy PostgreSQL database name are intentionally not
-# part of this check.
+# Prior product brands should be completely gone from project source and docs.
+# The legacy PostgreSQL database name uses the older generic algo_visualizer
+# identifier and is intentionally unrelated to either product brand.
 for path in ROOT.rglob('*'):
     if not path.is_file() or path == Path(__file__) or any(part in {'.git', 'node_modules', 'UI mockup files'} for part in path.parts):
         continue
@@ -50,12 +50,14 @@ for path in ROOT.rglob('*'):
         value = path.read_text()
     except UnicodeDecodeError:
         continue
-    if 'AlgoLens' in value or 'algolens-navigation' in value:
-        failures.append(f'old AlgoLens branding remains in {path.relative_to(ROOT)}')
+    lower = value.lower()
+    forbidden = ('algo' + 'lens', 'algo' + 'weave', 'algo' + ' weave')
+    if any(token in lower for token in forbidden):
+        failures.append(f'prior product branding remains in {path.relative_to(ROOT)}')
         break
 
 # Responsive breakpoint contract. App shell and navigation MUST switch at the
-# same width. This guards the exact v16 bug where shell stacking and sidebar
+# same width. This guards regressions where shell stacking and sidebar
 # drawer behavior used different breakpoints.
 require('@media (max-width: 1120px)' in text['sidebar_css'], 'sidebar drawer breakpoint is not 1120px')
 require('@media (max-width: 1120px)' in text['app_css'], 'app stacked-layout breakpoint is not 1120px')
@@ -69,14 +71,14 @@ require('@media (max-width: 960px)' not in text['sidebar_css'], 'obsolete 960px 
 require('@media (min-width: 641px) and (max-width: 1180px)' not in text['app_css'], 'obsolete 641–1180 shell breakpoint remains')
 
 if failures:
-    print('AlgoWeave v17 verification FAILED')
+    print('Engineering Lens verification FAILED')
     for failure in failures:
         print('  -', failure)
     sys.exit(1)
 
-print('PASS AlgoLens user-facing branding renamed to AlgoWeave')
-print('PASS frontend package + Go modules + container display names use AlgoWeave identity')
-print('PASS existing theme preference migrates to algoweave-theme')
+print('PASS user-facing branding uses Engineering Lens')
+print('PASS frontend package + Go modules + container display names use Engineering Lens identity')
+print('PASS existing theme preference migrates to engineering-lens-theme')
 print('PASS AppPage and Sidebar share the same 1120px navigation/layout breakpoint')
 print('PASS compact 1121–1440px laptop layout is explicitly defined')
 print('PASS tablet/mobile navigation is off-canvas and only lesson content owns overflow')

@@ -6,6 +6,7 @@ import { ThemeProvider } from './hooks/useTheme'
 import LandingPage from './pages/Landing/Landing'
 import AppPage from './pages/App/AppPage'
 import DocsPage from './pages/Docs/DocsPage'
+import SystemDesignPage from './pages/SystemDesign/SystemDesignPage'
 import AppErrorBoundary from './components/AppErrorBoundary/AppErrorBoundary'
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
@@ -17,6 +18,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
             <Route path="/" element={<LandingPage />} />
             <Route path="/app" element={<AppPage />} />
             <Route path="/docs" element={<DocsPage />} />
+            <Route path="/system-design" element={<SystemDesignPage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </BrowserRouter>

@@ -17,7 +17,7 @@ export default class AppErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, info: ErrorInfo) {
-    console.error('AlgoWeave UI error', error, info)
+    console.error('Engineering Lens UI error', error, info)
   }
 
   private reload = () => {
@@ -37,7 +37,7 @@ export default class AppErrorBoundary extends Component<Props, State> {
           <span className={styles.icon}>!</span>
           <div>
             <span className={styles.eyebrow}>Interface recovery</span>
-            <h1>AlgoWeave hit a display error.</h1>
+            <h1>Engineering Lens hit a display error.</h1>
             <p>
               Your browser is still responsive. Reload the lesson, or return to the landing page and choose it again.
             </p>

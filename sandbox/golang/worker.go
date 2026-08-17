@@ -111,13 +111,13 @@ func executeCode(code string, maxSeconds float64) (Result, error) {
 	// Source, Go caches and compiler scratch files stay on /tmp, which is
 	// intentionally mounted noexec. The final student binary is written to the
 	// dedicated /go-exec tmpfs, the only writable executable mount in the worker.
-	sourceDir, err := os.MkdirTemp("/tmp", "algoweave-go-src-*")
+	sourceDir, err := os.MkdirTemp("/tmp", "engineering-lens-go-src-*")
 	if err != nil {
 		return Result{}, err
 	}
 	defer os.RemoveAll(sourceDir)
 
-	execDir, err := os.MkdirTemp("/go-exec", "algoweave-go-bin-*")
+	execDir, err := os.MkdirTemp("/go-exec", "engineering-lens-go-bin-*")
 	if err != nil {
 		return errorResult("Failed to prepare Go executable workspace: "+err.Error(), time.Since(start).Seconds()*1000), nil
 	}

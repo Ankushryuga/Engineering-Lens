@@ -1,4 +1,4 @@
-module algoweave/sandbox/golang
+module engineering-lens/sandbox/golang
 
 go 1.24
 

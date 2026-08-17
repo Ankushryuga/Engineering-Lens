@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"algoweave/api/internal/models"
+	"engineering-lens/api/internal/models"
 )
 
 // staticDenyPatterns lists dangerous patterns per language that are rejected

@@ -1,5 +1,5 @@
 {
-  "name": "algoweave-frontend",
+  "name": "engineering-lens-frontend",
   "private": true,
   "version": "0.1.0",
   "type": "module",
@@ -7,7 +7,11 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0"
+    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+    "build:wasm": "cd wasm && GOOS=js GOARCH=wasm go build -trimpath -o ../public/system-design.wasm ./cmd/wasm && cp \"$(go env GOROOT)/misc/wasm/wasm_exec.js\" ../public/wasm_exec.js",
+    "generate:system-design": "cd wasm && go run ./cmd/generate -root ../..",
+    "audit:system-design": "cd wasm && go run ./cmd/audit -file ../public/system-design-topics.json",
+    "build:all": "npm run build:wasm && npm run build"
   },
   "dependencies": {
     "@monaco-editor/react": "^4.6.0",

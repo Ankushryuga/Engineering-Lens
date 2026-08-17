@@ -114,7 +114,7 @@ def main() -> int:
     require(grid_css, ".visitedFaded", "route-focus CSS")
 
     require(sidebar, "mobileOpen", "mobile navigation state")
-    require(sidebar, "aria-controls=\"algoweave-navigation\"", "accessible mobile menu trigger")
+    require(sidebar, "aria-controls=\"engineering-lens-navigation\"", "accessible mobile menu trigger")
     require(sidebar, "styles.sidebarOpen", "drawer open state")
     require(sidebar, "styles.backdropOpen", "drawer backdrop")
     require(sidebar_css, "@media (max-width: 1120px)", "mobile/tablet navigation breakpoint")

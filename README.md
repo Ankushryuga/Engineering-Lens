@@ -1,22 +1,13 @@
-# AlgoWeave — algorithm visualizer for students
+# Engineering Lens — algorithms and system design visualizer
 
-Learn the **idea first, then the code**.
+Learn the **idea, execution, architecture, and trade-offs visually**.
 
-AlgoWeave turns classic DSA algorithms into familiar real-life stories — warehouse
-loading, dictionary lookup, GPS routing, hospital triage, scheduling, packing,
-puzzles, text search, and more. Students can play/pause the actual sandboxed
-execution, optionally enable **Explain how it works** for synchronized teaching notes,
-and then switch to **Abstract** view to connect the analogy back to arrays, graphs,
-trees, linked lists, or the source-line execution trace. Source code is hidden by
-default and can be revealed on demand with **Show source code**.
+Engineering Lens turns classic DSA algorithms into familiar real-life stories — warehouse loading, dictionary lookup, GPS routing, hospital triage, scheduling, packing, puzzles, text search, and more. Students can play/pause the actual sandboxed execution, optionally enable **Explain how it works** for synchronized teaching notes, and then switch to **Abstract** view to connect the analogy back to arrays, graphs, trees, linked lists, or the source-line execution trace. Source code is hidden by default and can be revealed on demand with **Show source code**.
 
-The product intentionally supports **Python and Go only**. Both custom-code mode
-and every guided lesson use the same two runtimes, and all 55 canonical algorithms
-ship with reference solutions in both languages.
+The product also includes a complete **System Design workspace** for Backend, Database, Cloud, and GenAI architecture. **All Topics** is generated from the four bundled reference handbooks and exposes the technical System Design sections (1,000+ topics, including technically meaningful appendices) with search, filters, source-preserving notes, topic-specific Go/WebAssembly visualizations, source examples/flows, sequential navigation, and local completion tracking. **Architecture Labs** then combine those concepts into end-to-end systems with animated request/data flows, component inspection, traffic scaling (1×/10×/100×), failure injection, recovery guidance, operating metrics, design decisions, and explicit trade-offs.
 
-Full product design and rationale live in [`requirement_doc.md`](./requirement_doc.md).
+The product intentionally supports **Python and Go only**. Both custom-code mode and every guided lesson use the same two runtimes, and all 55 canonical algorithms ship with reference solutions in both languages.
 
-Current UI/brand release: **AlgoWeave v17**. The project uses a synchronized responsive shell/sidebar breakpoint so intermediate laptop widths do not fall into a mixed desktop/tablet layout. See [`V17_ALGOWEAVE_RESPONSIVE_RENAME.md`](./V17_ALGOWEAVE_RESPONSIVE_RENAME.md).
 
 ---
 
@@ -29,16 +20,16 @@ Current UI/brand release: **AlgoWeave v17**. The project uses a synchronized res
 - [Running locally without Docker](#running-locally-without-docker)
 - [API reference](#api-reference)
 - [Algorithm catalog](#algorithm-catalog)
+- [System design visualization](#system-design-visualization)
 - [Language support & sandbox notes](#language-support--sandbox-notes)
 - [Known limitations / trade-offs](#known-limitations--trade-offs)
-- [Roadmap](#roadmap)
 
 ---
 
 ## Architecture
 
 ```
-React student learning lab (lesson library + story visualizer + Monaco editor + step player)
+React learning platform shell + Go/WebAssembly System Design visualization engine + Monaco editor + interactive players
         │  HTTPS/REST + WebSocket
         │
         ├─── GET /api/v1/templates?category=&difficulty=   (catalog lookup)
@@ -70,7 +61,7 @@ each runtime can be scaled/tuned independently.
 
 | Layer | Technology |
 |---|---|
-| Frontend | React 18 + TypeScript, Vite, Monaco Editor |
+| Frontend | React 18 + TypeScript shell, Vite, Monaco Editor; Go 1.23 WebAssembly visualization engine for System Design |
 | API | Go (chi router, REST + WebSocket) |
 | Execution sandboxes | Docker — Python 3.11 and Go 1.24 worker images |
 | Messaging | Apache Kafka (`visualize-jobs` / `visualize-results` topics) |
@@ -87,9 +78,11 @@ See `requirement_doc.md` §3.3 for the full stack rationale.
 ├── frontend/           React + TypeScript app (Vite)
 │   └── src/
 │       ├── components/ Sidebar, CodeEditor, visualizers, StepPlayer, AlgoPicker
-│       ├── data/        real-world scenario mappings for the catalog
-│       ├── pages/       Landing, App, Docs
-│       └── lib/         REST + WebSocket API clients
+│       ├── data/        algorithm stories + interactive architecture-lab scenarios
+│       ├── pages/       Landing, Algorithm App, System Design Topic Explorer/Labs, Docs
+│       ├── public/      generated topic dataset + compiled Go WASM assets
+│       ├── wasm/        Go System Design engine, renderers, classifier, dataset generator/audit
+│       └── lib/         REST/WebSocket clients + thin WASM bootstrap
 ├── api/                 Go REST/WebSocket API
 │   └── internal/
 │       ├── handlers/    visualize, templates, websocket
@@ -104,6 +97,7 @@ See `requirement_doc.md` §3.3 for the full stack rationale.
 ├── catalog/             Postgres schema + ~55 seeded reference solutions
 │   ├── schema.sql
 │   └── seeds/algorithms.sql
+├── docs/system-design-references/  bundled source handbooks used by the Topic Explorer
 ├── docker-compose.yml    Full local stack: Kafka, Redis, Postgres, API, Python/Go sandboxes, frontend
 └── requirement_doc.md    Design & requirements doc (source of truth for scope)
 ```
@@ -118,7 +112,7 @@ cd Algo-Visualizer
 # Optional for Compose overrides; useful as a reference for local API settings:
 # cp .env.example .env
 docker compose down --remove-orphans
-# --remove-orphans cleans old JavaScript/Java/C++ workers left by releases before v13.
+# --remove-orphans cleans workers left by older local configurations.
 docker compose up --build
 ```
 
@@ -130,10 +124,7 @@ This brings up:
 - Python and Go sandbox worker pools
 - The frontend dev server on `http://localhost:5173`
 
-Open **http://localhost:5173** — choose **Open learning lab**, pick a guided lesson,
-and run it. Story mode is the default. Source code stays hidden until **Show source
-code** is selected, and **Explain how it works** adds step-synchronized explanations.
-Abstract mode remains available beside Story mode.
+Open **http://localhost:5173** — choose **Open learning lab**, pick a guided lesson, and run it. Story mode is the default. Source code stays hidden until **Show source code** is selected, and **Explain how it works** adds step-synchronized explanations. Abstract mode remains available beside Story mode.
 
 To stop everything:
 
@@ -158,31 +149,25 @@ Compose keeps service-to-service ports unchanged inside Docker. Host mappings ar
 - Redis: `localhost:6380` → container `6379`
 - Kafka: `localhost:29094`
 
-The PostgreSQL host port intentionally defaults to **5433** so a locally installed
-PostgreSQL server on the standard `5432` port does not block `docker compose up`.
+The PostgreSQL host port intentionally defaults to **5433** so a locally installed PostgreSQL server on the standard `5432` port does not block `docker compose up`.
 
 ### Verify all guided lessons
 
-Without Docker, you can smoke-test every seeded Python lesson through the actual
-tracer used by the sandbox:
+Without Docker, you can smoke-test every seeded Python lesson through the actual tracer used by the sandbox:
 
 ```bash
 python3 scripts/verify_catalog.py
 ```
 
-The command must report all 55 lessons as `PASS`. Some lessons emit rich structured
-state; the rest deliberately use the student learning-timeline renderer rather than
-showing an empty graph/array.
+The command must report all 55 lessons as `PASS`. Some lessons emit rich structured state; the rest deliberately use the student learning-timeline renderer rather than showing an empty graph/array.
 
-To verify the Go worker transformation and make sure every canonical Go lesson
-produces a usable multi-step trace:
+To verify the Go worker transformation and make sure every canonical Go lesson produces a usable multi-step trace:
 
 ```bash
 python3 scripts/verify_go_runtime.py
 ```
 
-That check compiles and executes all 55 Go references after applying the same
-source instrumentation used by `sandbox-go`.
+That check compiles and executes all 55 Go references after applying the same source instrumentation used by `sandbox-go`.
 
 ## Running locally without Docker
 
@@ -262,6 +247,61 @@ Every one of the 55 catalog entries ships with both a Python and a Go reference
 solution. Every entry also has a concrete real-world scenario used by the default
 visualization lens.
 
+## System design visualization
+
+Open **http://localhost:5173/system-design**.
+
+The workspace has **two complementary modes**.
+
+### All Topics — technical handbook coverage
+
+The project bundles the four supplied references under `docs/system-design-references/` and generates `frontend/public/system-design-topics.json` from their real top-level sections. The generated explorer currently contains **1,077 technical source topics** across:
+
+| Domain | Technical topics |
+|---|---:|
+| Backend Systems | 207 |
+| Database Systems | 133 |
+| Cloud Architecture | 343 |
+| GenAI Systems | 394 |
+
+- full-text search across title, structure, key points, and supplied source notes
+- domain, section-type, and learning-depth filters
+- automatic topic-to-visualizer classification in Go across 44 visualization families
+- actual execution-plan trees, transaction timelines, wait graphs, queues, rate limiters, network topologies, failover views, RAG pipelines, agent loops, model-routing views, charts, and other topic-appropriate diagrams
+- Go-driven step playback, component highlighting, failure injection, recovery guidance, and trade-off panels
+- source-derived linear engineering-flow fallback for long-tail sections; the radial circle map is not used as the primary fallback
+- extracted source examples / ASCII flows when the section contains them
+- complete source-note reading without replacing the supplied wording with a different curriculum
+- Previous/Next handbook navigation
+- local completion tracking and per-domain progress
+- responsive desktop/tablet/mobile layouts and dark/light themes
+
+Regenerate the dataset after editing the bundled references with:
+
+```bash
+cd frontend
+npm run generate:system-design
+npm run audit:system-design
+npm run build:wasm
+```
+
+### Architecture Labs — end-to-end system behavior
+
+The architecture labs remain the interactive operating-condition simulator. They include production-oriented designs across Backend, Database, Cloud, and GenAI, including Scalable API Platform, Event-Driven Order Processing, Global Notification Platform, Cache + Read Replicas, Sharded Database, Transactional Outbox + CDC, Highly Available
+Cloud Web App, Multi-Region SaaS, Cloud Event Pipeline, Enterprise RAG, Tool-Using AI Agent, and Multi-Model AI Gateway.
+
+Every architecture lab includes:
+
+- step-by-step animated request/data flow with play, pause, seek, and speed controls
+- clickable components with responsibility details
+- synchronous, asynchronous, and data-path layer toggles
+- 1× / 10× / 100× traffic simulation with bottleneck guidance
+- realistic failure injection with blast-radius and recovery guidance
+- requirements, scale assumptions, production metrics, key design decisions, and trade-offs
+
+The topic visualizer is implemented in **Go**. The browser loads the compiled `system-design.wasm` module, and Go owns topic classification, visualizer selection, SVG generation, playback state, failure injection, and trade-off rendering. React is only the product/navigation/source-reader host for this surface. The source dataset is also
+generated by the Go tool under `frontend/wasm/cmd/generate`; no additional backend service or database is required because the curriculum is deterministic bundled content.
+
 ## Language support & sandbox notes
 
 | Language | Runtime | Status | Instrumentation approach |
@@ -269,8 +309,7 @@ visualization lens.
 | Python | 3.11 | Stable | `sys.settrace()` — dynamic line-level tracing |
 | Go | 1.24 | Stable | Source-level instrumentation, compiled via `go run` |
 
-Both runtimes normalize to the same `steps[]` JSON shape, so the frontend player
-is language-agnostic:
+Both runtimes normalize to the same `steps[]` JSON shape, so the frontend player is language-agnostic:
 
 ```jsonc
 {
@@ -281,53 +320,14 @@ is language-agnostic:
 }
 ```
 
-Both sandbox workers are attached only to an **internal Kafka network**, with no
-outbound internet path. Workers use a read-only root filesystem, `/tmp` scratch
-space, PID/CPU/memory caps, `no-new-privileges`, hard wall-clock timeouts, and a
-non-root user. Static pre-checks reject obviously dangerous patterns such as
-`os.system` in Python and `os/exec` in Go before code reaches the sandbox.
+Both sandbox workers are attached only to an **internal Kafka network**, with no outbound internet path. Workers use a read-only root filesystem, `/tmp` scratch space, PID/CPU/memory caps, `no-new-privileges`, hard wall-clock timeouts, and a non-root user. Static pre-checks reject obviously dangerous patterns such as `os.system` in Python and `os/exec` in Go before code reaches the sandbox.
 
 ## Known limitations / trade-offs
 
-This is a v1 build; the following are deliberate, documented scope cuts
-(see `requirement_doc.md` §3.8 "Open questions" for the original design
-discussion):
 
 - **Custom-code instrumentation is heuristic, not a full symbolic trace.**
-  Flat-array code gets structured compare/swap/set state when the tracer can
-  recognize it. Catalog graph/tree/list algorithms can emit richer explicit
-  steps, and other code falls back to real source-line execution progress so
-  the player remains seekable without fabricating algorithm state. Arbitrary
-  custom nested structures (for example a user-written DP table) still need
-  richer `renderType`-aware tracing to visualize their internal values.
-- **Per-job isolation is at the worker-pool level, not per-container.** Each
-  language has its own long-lived Docker image/worker pool (as described in
-  `requirement_doc.md` §3.2), rather than spinning up a fresh container per
-  submitted job. This matches the documented architecture but is a lighter
-  isolation boundary than one-container-per-job.
+  Flat-array code gets structured compare/swap/set state when the tracer can recognize it. Catalog graph/tree/list algorithms can emit richer explicit steps, and other code falls back to real source-line execution progress so the player remains seekable without fabricating algorithm state. Arbitrary custom nested structures (for example a user-written DP table) still need richer `renderType`-aware tracing to visualize their internal values.
+- **Per-job isolation is at the worker-pool level, not per-container.** 
+  Each language has its own long-lived Docker image/worker pool (as described in `requirement_doc.md` §3.2), rather than spinning up a fresh container per submitted job. This matches the documented architecture but is a lighter isolation boundary than one-container-per-job.
 - **Go tracing is intentionally lighter than Python tracing for arbitrary custom code.**
-  Canonical Go catalog solutions are fully available, but rich structure-specific
-  tracing still depends on what the source-level Go instrumenter can observe.
-
-## Roadmap
-
-Per `requirement_doc.md` §3.4/§3.7:
-
-- [ ] Expand custom-code tracing beyond flat-array heuristics (DP tables and richer structures)
-- [ ] Recursion tree / call-stack visualization
-- [ ] Shareable visualization links
-- [ ] User accounts (save/share history)
-- [ ] Deploy to EKS with Prometheus/Grafana dashboards
-- [ ] LLM-assisted auto-detection of "what kind of algorithm is this" (v2)
-
-## License
-
-See [`LICENSE`](./LICENSE).
-
-### v8 weighted Pathfinder compatibility note
-
-Dijkstra and A* use a trace-driven 15×26 weighted city-grid visualization in Story mode. The original `UI mockup files/pathfinding-grid.html` is only a design reference and is not imported or read at runtime. Existing PostgreSQL volumes are upgraded by the one-shot `catalog-migrate` service, so upgrading no longer requires deleting `postgres_data`. Older graph-format Dijkstra results remain renderable through the compatible Delivery Route view instead of producing a blank panel.
-
-### v9 pathfinder / phone UI note
-
-The weighted-grid Pathfinder now distinguishes geometric route length from weighted travel cost and visually fades exploration noise after the final route is confirmed. On tablet/phone widths, AlgoWeave uses a sticky top bar and off-canvas navigation drawer instead of compressing or hiding the sidebar. See `V9_CORRECTNESS_RESPONSIVE.md`.
+  Canonical Go catalog solutions are fully available, but rich structure-specific tracing still depends on what the source-level Go instrumenter can observe.

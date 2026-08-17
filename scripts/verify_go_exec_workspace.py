@@ -15,7 +15,7 @@ checks = [
     ('uid=10001,gid=10001' in compose, 'executable tmpfs must belong to the sandbox user'),
     ('addgroup -S -g 10001 sandbox' in dockerfile and 'adduser -S -D -H -u 10001' in dockerfile,
      'sandbox UID/GID must be deterministic'),
-    ('os.MkdirTemp("/go-exec", "algoweave-go-bin-*")' in worker, 'compiled binaries must be placed on /go-exec'),
+    ('os.MkdirTemp("/go-exec", "engineering-lens-go-bin-*")' in worker, 'compiled binaries must be placed on /go-exec'),
     ('exec.CommandContext(ctx, "go", "build", "-trimpath", "-o", binaryPath, mainPath)' in worker,
      'worker must build explicitly instead of go run'),
     ('exec.CommandContext(ctx, binaryPath)' in worker, 'worker must execute the dedicated binary'),

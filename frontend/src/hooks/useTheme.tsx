@@ -10,7 +10,7 @@ interface ThemeContextValue {
 
 const ThemeContext = createContext<ThemeContextValue | undefined>(undefined)
 
-const STORAGE_KEY = 'algoweave-theme'
+const STORAGE_KEY = 'engineering-lens-theme'
 const LEGACY_STORAGE_KEY = 'algo-visualizer-theme'
 
 function getInitialTheme(): Theme {

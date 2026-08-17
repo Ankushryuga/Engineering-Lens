@@ -1,6 +1,6 @@
 """
 tracer.py — Instruments and executes untrusted Python code, emitting a
-normalized steps[] trace compatible with the AlgoWeave frontend.
+normalized steps[] trace compatible with the Engineering Lens frontend.
 
 Approach (documented trade-off, see requirement_doc.md §3.2 / §3.8):
   We use sys.settrace() to observe line execution and local variable state.

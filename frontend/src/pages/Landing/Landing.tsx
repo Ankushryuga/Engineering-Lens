@@ -63,11 +63,12 @@ export default function LandingPage() {
   return (
     <div className={styles.page}>
       <header className={styles.nav}>
-        <Link to="/" className={styles.brand} aria-label="AlgoWeave home">
+        <Link to="/" className={styles.brand} aria-label="Engineering Lens home">
           <span className={styles.brandMark}>⌁</span>
-          <span>AlgoWeave</span>
+          <span>Engineering Lens</span>
         </Link>
         <div className={styles.navActions}>
+          <Link to="/system-design" className={styles.docsLink}>System Design</Link>
           <Link to="/docs" className={styles.docsLink}>Docs</Link>
           <button
             type="button"
@@ -82,25 +83,29 @@ export default function LandingPage() {
 
       <main className={styles.hero}>
         <section className={styles.heroCopy}>
-          <span className={styles.eyebrow}>Learn algorithms visually</span>
-          <h1>See the idea. Understand the steps. Reveal the code when you are ready.</h1>
+          <span className={styles.eyebrow}>Learn algorithms &amp; system design visually</span>
+          <h1>See how algorithms run — and how production systems behave.</h1>
           <p>
-            AlgoWeave turns algorithms into interactive lessons with real-world Story mode,
-            step-by-step playback, optional explanations, and source code on demand.
+            Engineering Lens combines interactive algorithm lessons with a production system-design lab.
+            Follow request flows, scale traffic, inject failures, inspect trade-offs, and reveal code only when it helps.
           </p>
 
           <div className={styles.actions}>
             <button type="button" className={styles.primaryButton} onClick={() => navigate('/app?mode=guided')}>
               Start learning <span>→</span>
             </button>
-            <button type="button" className={styles.secondaryButton} onClick={() => navigate('/app?mode=custom')}>
+            <button type="button" className={styles.secondaryButton} onClick={() => navigate('/system-design')}>
+              Explore system design
+            </button>
+            <button type="button" className={styles.tertiaryButton} onClick={() => navigate('/app?mode=custom')}>
               Try my own code
             </button>
           </div>
 
           <div className={styles.capabilities} aria-label="Learning features">
             <span>🌍 Story mode</span>
-            <span>💡 Step explanations</span>
+            <span>⌁ Architecture flows</span>
+            <span>⚠ Failure injection</span>
             <span>⌨ Source on demand</span>
           </div>
         </section>
@@ -155,7 +160,7 @@ export default function LandingPage() {
       </main>
 
       <footer className={styles.footer}>
-        <span>AlgoWeave · visual algorithm learning</span>
+        <span>Engineering Lens · algorithms and system design, visualized</span>
         <Link to="/docs">Documentation</Link>
       </footer>
     </div>

@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"time"
 
-	"algoweave/api/internal/models"
+	"engineering-lens/api/internal/models"
 
 	"github.com/redis/go-redis/v9"
 )

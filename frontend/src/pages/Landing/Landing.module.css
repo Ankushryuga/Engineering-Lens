@@ -127,7 +127,8 @@
 }
 
 .primaryButton,
-.secondaryButton {
+.secondaryButton,
+.tertiaryButton {
   min-height: 44px;
   padding: 10px 16px;
   border-radius: 11px;
@@ -145,12 +146,19 @@
 .primaryButton:hover { filter: brightness(1.06); }
 
 .secondaryButton {
+  border: 1px solid var(--accent-border);
+  background: var(--accent-dim);
+  color: var(--accent-soft);
+}
+
+.tertiaryButton {
   border: 1px solid var(--border);
   background: var(--surface);
   color: var(--text);
 }
 
-.secondaryButton:hover { border-color: var(--accent-border); }
+.secondaryButton:hover,
+.tertiaryButton:hover { border-color: var(--accent-border); }
 
 .capabilities {
   margin-top: 22px;

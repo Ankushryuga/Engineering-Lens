@@ -9,10 +9,10 @@ import (
 	"sync"
 	"time"
 
-	"algoweave/api/internal/kafka"
-	"algoweave/api/internal/models"
-	redisclient "algoweave/api/internal/redis"
-	"algoweave/api/internal/validator"
+	"engineering-lens/api/internal/kafka"
+	"engineering-lens/api/internal/models"
+	redisclient "engineering-lens/api/internal/redis"
+	"engineering-lens/api/internal/validator"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"

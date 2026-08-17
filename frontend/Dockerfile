@@ -1,3 +1,12 @@
+# ── Go WebAssembly System Design engine ──────────────────────────────────────
+FROM golang:1.23-alpine AS system-design-wasm
+WORKDIR /src
+COPY wasm ./wasm
+RUN mkdir -p /out \
+    && cd wasm \
+    && GOOS=js GOARCH=wasm go build -trimpath -ldflags="-s -w" -o /out/system-design.wasm ./cmd/wasm \
+    && cp "$(go env GOROOT)/misc/wasm/wasm_exec.js" /out/wasm_exec.js
+
 # ── Dependencies stage ────────────────────────────────────────────────────────
 FROM node:20-alpine AS deps
 WORKDIR /usr/src/frontend
@@ -14,6 +23,8 @@ FROM node:20-alpine AS dev
 WORKDIR /usr/src/frontend
 COPY --from=deps /usr/src/frontend/node_modules ./node_modules
 COPY . .
+COPY --from=system-design-wasm /out/system-design.wasm ./public/system-design.wasm
+COPY --from=system-design-wasm /out/wasm_exec.js ./public/wasm_exec.js
 EXPOSE 5173
 CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
 
@@ -22,6 +33,8 @@ FROM node:20-alpine AS build
 WORKDIR /usr/src/frontend
 COPY --from=deps /usr/src/frontend/node_modules ./node_modules
 COPY . .
+COPY --from=system-design-wasm /out/system-design.wasm ./public/system-design.wasm
+COPY --from=system-design-wasm /out/wasm_exec.js ./public/wasm_exec.js
 RUN npm run build
 
 # ── Production stage — static files served by nginx ──────────────────────────

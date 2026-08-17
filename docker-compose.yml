@@ -2,7 +2,7 @@ services:
   # ── Infrastructure ──────────────────────────────────────────────────────────
   zookeeper:
     image: confluentinc/cp-zookeeper:7.6.0
-    container_name: algoweave-zookeeper
+    container_name: engineering-lens-zookeeper
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
@@ -16,7 +16,7 @@ services:
 
   kafka:
     image: confluentinc/cp-kafka:7.6.0
-    container_name: algoweave-kafka
+    container_name: engineering-lens-kafka
     depends_on:
       zookeeper:
         condition: service_healthy
@@ -46,7 +46,7 @@ services:
 
   redis:
     image: redis:7.2-alpine
-    container_name: algoweave-redis
+    container_name: engineering-lens-redis
     ports:
       # Host-side port remapped to 6380 to avoid colliding with unrelated
       # containers on this machine that already publish 6379. Containers on
@@ -61,7 +61,7 @@ services:
 
   postgres:
     image: postgres:16-alpine
-    container_name: algoweave-postgres
+    container_name: engineering-lens-postgres
     ports:
       - "${POSTGRES_HOST_PORT:-5433}:5432"
     environment:
@@ -80,7 +80,7 @@ services:
 
   catalog-migrate:
     image: postgres:16-alpine
-    container_name: algoweave-catalog-migrate
+    container_name: engineering-lens-catalog-migrate
     depends_on:
       postgres:
         condition: service_healthy
@@ -109,7 +109,7 @@ services:
     build:
       context: ./api
       dockerfile: Dockerfile
-    container_name: algoweave-api
+    container_name: engineering-lens-api
     ports:
       - "8080:8080"
     environment:
@@ -138,7 +138,7 @@ services:
     build:
       context: ./sandbox/python
       dockerfile: Dockerfile
-    container_name: algoweave-sandbox-python
+    container_name: engineering-lens-sandbox-python
     environment:
       KAFKA_BROKERS: kafka:9092
       KAFKA_JOBS_TOPIC: visualize-jobs
@@ -166,7 +166,7 @@ services:
     build:
       context: ./sandbox/golang
       dockerfile: Dockerfile
-    container_name: algoweave-sandbox-go
+    container_name: engineering-lens-sandbox-go
     environment:
       KAFKA_BROKERS: kafka:9092
       KAFKA_JOBS_TOPIC: visualize-jobs
@@ -199,7 +199,7 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       target: dev
-    container_name: algoweave-frontend
+    container_name: engineering-lens-frontend
     ports:
       - "5173:5173"
     volumes:

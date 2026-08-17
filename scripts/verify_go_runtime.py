@@ -76,9 +76,9 @@ def check_static_contract() -> None:
     assert '/go-exec:rw,exec' in compose
     assert 'uid=10001,gid=10001' in compose
     assert 'mem_limit: 512m' in compose and 'pids_limit: 128' in compose
-    assert 'algoweave-sandbox-javascript' not in compose
-    assert 'algoweave-sandbox-java' not in compose
-    assert 'algoweave-sandbox-cpp' not in compose
+    assert 'engineering-lens-sandbox-javascript' not in compose
+    assert 'engineering-lens-sandbox-java' not in compose
+    assert 'engineering-lens-sandbox-cpp' not in compose
     print("PASS null/error results cannot crash the visualization UI")
     print("PASS failed executions are not reused as code-cache hits")
     print("PASS Go sandbox uses a dedicated executable tmpfs and keeps /tmp noexec")
@@ -99,7 +99,7 @@ def check_instrumented_catalog() -> None:
     env = dict(os.environ)
     env.update({"GO111MODULE": "off", "GOTOOLCHAIN": "local", "CGO_ENABLED": "0", "GOMAXPROCS": "1"})
 
-    with tempfile.TemporaryDirectory(prefix="algoweave-go-verify-") as td:
+    with tempfile.TemporaryDirectory(prefix="engineering-lens-go-verify-") as td:
         tmp = pathlib.Path(td)
         instrument_copy = tmp / "instrument.go"
         helper = tmp / "helper.go"

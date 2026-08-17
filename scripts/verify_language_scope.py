@@ -60,7 +60,7 @@ for removed_service in ('sandbox-javascript:', 'sandbox-java:', 'sandbox-cpp:'):
 go_blocks = re.findall(r"\$go\$(.*?)\$go\$ FROM templates WHERE name = '((?:''|[^'])+)'", MIGRATION, re.S)
 require(len(go_blocks) == 55, f'expected 55 Go source blocks, found {len(go_blocks)}')
 if shutil.which('go') and not failures:
-    with tempfile.TemporaryDirectory(prefix='algoweave-go-catalog-') as td:
+    with tempfile.TemporaryDirectory(prefix='engineering-lens-go-catalog-') as td:
         td_path = Path(td)
         for index, (code, sql_name) in enumerate(go_blocks, 1):
             name = sql_name.replace("''", "'")

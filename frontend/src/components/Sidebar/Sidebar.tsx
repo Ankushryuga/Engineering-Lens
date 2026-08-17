@@ -53,12 +53,12 @@ export default function Sidebar({ source, language, availableLanguages, onSource
   return (
     <>
       <header className={styles.mobileBar}>
-        <Link to="/" className={styles.mobileLogo} aria-label="AlgoWeave home">
+        <Link to="/" className={styles.mobileLogo} aria-label="Engineering Lens home">
           <svg viewBox="0 0 14 14" fill="none" width="14" height="14">
             <rect x="1" y="1" width="12" height="12" stroke="var(--text-secondary)" strokeWidth="1"/>
             <path d="M4 9L6 5L8 8L10 4" stroke="var(--accent)" strokeWidth="1.2"/>
           </svg>
-          <span>AlgoWeave</span>
+          <span>Engineering Lens</span>
         </Link>
         {isApp ? <span className={styles.mobileContext}>{LANGUAGES[language].label}</span> : null}
         <button
@@ -67,7 +67,7 @@ export default function Sidebar({ source, language, availableLanguages, onSource
           onClick={() => setMobileOpen(true)}
           aria-label="open navigation menu"
           aria-expanded={mobileOpen}
-          aria-controls="algoweave-navigation"
+          aria-controls="engineering-lens-navigation"
         >
           <span />
           <span />
@@ -83,16 +83,36 @@ export default function Sidebar({ source, language, availableLanguages, onSource
         tabIndex={mobileOpen ? 0 : -1}
       />
 
-      <aside id="algoweave-navigation" className={`${styles.sidebar} ${mobileOpen ? styles.sidebarOpen : ''}`} aria-label="AlgoWeave navigation">
+      <aside id="engineering-lens-navigation" className={`${styles.sidebar} ${mobileOpen ? styles.sidebarOpen : ''}`} aria-label="Engineering Lens navigation">
         <div className={styles.drawerHead}>
           <Link to="/" className={styles.logo}>
             <svg viewBox="0 0 14 14" fill="none" width="14" height="14">
               <rect x="1" y="1" width="12" height="12" stroke="var(--text-secondary)" strokeWidth="1"/>
               <path d="M4 9L6 5L8 8L10 4" stroke="var(--accent)" strokeWidth="1.2"/>
             </svg>
-            <span>AlgoWeave</span>
+            <span>Engineering Lens</span>
           </Link>
           <button type="button" className={styles.closeButton} onClick={() => setMobileOpen(false)} aria-label="close navigation menu">×</button>
+        </div>
+
+        <div className={styles.section}>
+          <div className={styles.label}>Explore</div>
+          <Link
+            to="/app?mode=guided"
+            className={`${styles.navItem} ${isApp ? styles.active : ''}`}
+            onClick={() => setMobileOpen(false)}
+          >
+            <span aria-hidden="true">⌁</span>
+            Algorithm lab
+          </Link>
+          <Link
+            to="/system-design"
+            className={styles.navItem}
+            onClick={() => setMobileOpen(false)}
+          >
+            <span aria-hidden="true">⬡</span>
+            System design
+          </Link>
         </div>
 
         {isApp && (

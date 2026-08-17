@@ -12,12 +12,12 @@ import (
 	"syscall"
 	"time"
 
-	"algoweave/api/internal/handlers"
-	"algoweave/api/internal/kafka"
-	"algoweave/api/internal/middleware"
-	"algoweave/api/internal/models"
-	"algoweave/api/internal/postgres"
-	redisclient "algoweave/api/internal/redis"
+	"engineering-lens/api/internal/handlers"
+	"engineering-lens/api/internal/kafka"
+	"engineering-lens/api/internal/middleware"
+	"engineering-lens/api/internal/models"
+	"engineering-lens/api/internal/postgres"
+	redisclient "engineering-lens/api/internal/redis"
 
 	"github.com/go-chi/chi/v5"
 	chimiddleware "github.com/go-chi/chi/v5/middleware"

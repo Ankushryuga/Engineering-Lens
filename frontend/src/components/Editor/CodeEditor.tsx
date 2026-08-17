@@ -41,7 +41,7 @@ export default function CodeEditor({ code, language, onChange, readOnly }: CodeE
         language={meta.monacoLang}
         value={code}
         onChange={val => onChange(val ?? '')}
-        theme={theme === 'dark' ? 'algoweave-dark' : 'algoweave-light'}
+        theme={theme === 'dark' ? 'engineering-lens-dark' : 'engineering-lens-light'}
         options={{
           fontSize: 13,
           fontFamily: "'IBM Plex Mono', 'Fira Code', monospace",
@@ -64,13 +64,13 @@ export default function CodeEditor({ code, language, onChange, readOnly }: CodeE
           },
         }}
         beforeMount={monaco => {
-          monaco.editor.defineTheme('algoweave-dark', {
+          monaco.editor.defineTheme('engineering-lens-dark', {
             base: 'vs-dark',
             inherit: true,
             rules: [],
             colors: DARK_COLORS,
           })
-          monaco.editor.defineTheme('algoweave-light', {
+          monaco.editor.defineTheme('engineering-lens-light', {
             base: 'vs',
             inherit: true,
             rules: [],
