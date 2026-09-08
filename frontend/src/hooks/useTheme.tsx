@@ -14,11 +14,11 @@ const STORAGE_KEY = 'engineering-lens-theme'
 const LEGACY_STORAGE_KEY = 'algo-visualizer-theme'
 
 function getInitialTheme(): Theme {
-  if (typeof window === 'undefined') return 'dark'
+  if (typeof window === 'undefined') return 'light'
   const stored = window.localStorage.getItem(STORAGE_KEY) ?? window.localStorage.getItem(LEGACY_STORAGE_KEY)
   if (stored === 'dark' || stored === 'light') return stored
-  // Fall back to the user's OS preference on first visit.
-  return window.matchMedia?.('(prefers-color-scheme: light)').matches ? 'light' : 'dark'
+  // Engineering Lens defaults to the light developer theme on first visit.
+  return 'light'
 }
 
 export function ThemeProvider({ children }: { children: ReactNode }) {

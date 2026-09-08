@@ -15,6 +15,7 @@ interface SidebarProps {
 export default function Sidebar({ source, language, availableLanguages, onSourceChange, onLanguageChange }: SidebarProps) {
   const loc = useLocation()
   const isApp = loc.pathname === '/app'
+  const isDashboard = loc.pathname === '/dashboard'
   const { theme, toggleTheme } = useTheme()
   const [mobileOpen, setMobileOpen] = useState(false)
 
@@ -98,6 +99,14 @@ export default function Sidebar({ source, language, availableLanguages, onSource
         <div className={styles.section}>
           <div className={styles.label}>Explore</div>
           <Link
+            to="/dashboard"
+            className={`${styles.navItem} ${isDashboard ? styles.active : ''}`}
+            onClick={() => setMobileOpen(false)}
+          >
+            <span aria-hidden="true">⌂</span>
+            Dashboard
+          </Link>
+          <Link
             to="/app?mode=guided"
             className={`${styles.navItem} ${isApp ? styles.active : ''}`}
             onClick={() => setMobileOpen(false)}
@@ -106,12 +115,20 @@ export default function Sidebar({ source, language, availableLanguages, onSource
             Algorithm lab
           </Link>
           <Link
-            to="/system-design"
+            to="/system-design?view=topics"
             className={styles.navItem}
             onClick={() => setMobileOpen(false)}
           >
             <span aria-hidden="true">⬡</span>
             System design
+          </Link>
+          <Link
+            to="/system-design?view=labs"
+            className={styles.navItem}
+            onClick={() => setMobileOpen(false)}
+          >
+            <span aria-hidden="true">⌁</span>
+            Architecture labs
           </Link>
         </div>
 
